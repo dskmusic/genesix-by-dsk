@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS version")
 project(Genesix VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -27,13 +28,14 @@ juce_add_plugin(Genesix
     BUNDLE_ID com.dskmusic.genesix
     PLUGIN_MANUFACTURER_CODE Dskm
     PLUGIN_CODE Gnsx
-    FORMATS VST3 Standalone
+    FORMATS VST3 AU Standalone   # AU only built on macOS
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     VST3_CATEGORIES Instrument Synth
+    AU_MAIN_TYPE kAudioUnitType_MusicDevice
     COPY_PLUGIN_AFTER_BUILD FALSE)
 
 # ---- Shared code (plugin + tool/tests compile the same sources) ----

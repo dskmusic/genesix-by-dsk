@@ -15,3 +15,4 @@ Decisions made where the brief was ambiguous; the most robust option was chosen.
 | 9 | Plugin codes | Manufacturer `Dskm`, plugin `Gnsx` | Frozen forever (DAW session compatibility). |
 | 10 | Shared code | One INTERFACE source set compiled into the plugin and into `GenesixTool` | The tool runs unit tests, offline renders, preset validation, factory bank generation, SFZ export and screenshots with the exact same engine. |
 | 11 | Commit e-mail | Repo-local GitHub noreply address | The repo is public; keeps the personal e-mail out of commit metadata. |
+| 12 | macOS | Universal binary (arm64+x86_64), VST3 + AU + Standalone, min macOS 11, ad-hoc signed, unsigned `.pkg` | No Apple Developer ID available: binaries are not notarized (users must allow them in Gatekeeper). Priority: Windows + macOS; Linux kept while it costs nothing. |
