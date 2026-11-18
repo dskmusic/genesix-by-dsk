@@ -1,0 +1,40 @@
+# ---- Personal / backups (case-insensitive patterns: Linux CI is case-sensitive) ----
+[Cc][Rr][Ee][Aa][Rr][ _-][Bb][Aa][Cc][Kk][Uu][Pp].[Pp][Yy]
+[Cc][Rr][Ee][Aa][Rr][Bb][Aa][Cc][Kk][Uu][Pp].[Pp][Yy]
+[Bb]ackups/
+[Bb]ackup/
+BACKUP*/
+[Cc]opias/
+*backup*/
+*Backup*/
+*BACKUP*/
+*.bak
+/*.zip
+/*.7z
+/prompt inicial.txt
+BUILD_LOCAL.md
+
+# ---- Build artifacts ----
+build/
+build-*/
+cmake-build-*/
+out/
+dist/
+.cache/
+_deps/
+CMakeUserPresets.json
+
+# ---- IDE / env ----
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.user
+*.suo
+*.log
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+Thumbs.db
+third_party/JUCE/
