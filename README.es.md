@@ -31,7 +31,7 @@ Su pantalla principal es un **generador inteligente de presets**: eliges categor
   Si falla, se descarta y se regenera. Todos los presets de fábrica pasaron la misma validación.
 - Consola de "la IA está creando tu preset": mensajes en español o inglés escritos letra a letra, más de 54 disponibles por categoría y sin repetirse seguidos. Los parámetros se "resuelven" en pantalla mientras el preset anterior se desmonta y el nuevo se ensambla.
 - **Mutar** (variación suave), **Mezclar** (con el historial, un favorito o la biblioteca) y **bloqueo de secciones** (OSC, FILTRO, ENV, MOD, FX, RITMO).
-- **Historial navegable** como un navegador, con botones **◀ ▶**, atajos Alt+←/→ y contador n/N. Si vuelves atrás y generas, se corta lo que había por delante. Persiste entre sesiones y su límite es configurable.
+- **Historial navegable** como un navegador, con botones **◀ ▶**, atajos Alt+←/→ y contador n/N. Si vuelves atrás y generas, se corta lo que había por delante. Solo guarda la sesión actual (empieza vacío cada vez que se carga el plugin) y su límite es configurable.
 - Visualizadores en vivo a 60 fps que nunca tocan el hilo de audio:
   - osciloscopio con fósforo, analizador de espectro y vúmetros;
   - matriz de LEDs de voces, arp, gate, secuenciador, envolventes y LFOs;
@@ -124,7 +124,7 @@ Descarga la última versión en **[Releases](https://github.com/dskmusic/genesix
 | **macOS (Universal)** | `…-macos-universal-installer.pkg` o `…-vst3.zip`, `…-au.zip`, `…-standalone.zip` | Ejecuta el pkg, o copia a `~/Library/Audio/Plug-Ins/VST3` / `Components`. Los binarios no están notarizados: clic derecho → Abrir, o `xattr -dr com.apple.quarantine <ruta>` |
 | **Linux x86_64** | `…-linux-x64-vst3.tar.gz`, `…-standalone.tar.gz` | Descomprime `Genesix by DSK.vst3` en `~/.vst3/` |
 
-Verifica las descargas con `SHA256SUMS.txt`. Presets, historial y ajustes se guardan en `Documentos/DSK Music/Genesix/`.
+Verifica las descargas con `SHA256SUMS.txt`. Presets y ajustes se guardan en `Documentos/DSK Music/Genesix/`.
 
 ## Uso rápido
 1. Abre **GENERADOR**, elige una categoría, ajusta los sliders y pulsa **GENERAR** (Ctrl+Intro).

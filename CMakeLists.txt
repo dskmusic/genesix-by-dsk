@@ -26,6 +26,7 @@ juce_add_plugin(Genesix
     COMPANY_WEBSITE "https://dskmusic.com"
     PRODUCT_NAME "Genesix by DSK"
     BUNDLE_ID com.dskmusic.genesix
+    ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/branding/genesix-icon.png"   # regenerate: GenesixTool icon branding
     PLUGIN_MANUFACTURER_CODE Dskm
     PLUGIN_CODE Gnsx
     FORMATS VST3 AU Standalone   # AU only built on macOS

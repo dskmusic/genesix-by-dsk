@@ -185,7 +185,9 @@ void ResolveGrid::paint (juce::Graphics& g)
 // ================================================================ GeneratorPage
 GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macros")
 {
-    history = std::make_unique<GenHistory> (Library::defaultRoot().getChildFile ("history.json"), ctx.settings.historyLimit());
+    history = &ctx.proc.genHistory;
+    history->setLimit (ctx.settings.historyLimit());
+    Library::defaultRoot().getChildFile ("history.json").deleteFile(); // left over by v1.0.0, which persisted history
     addAndMakeVisible (bus);
     for (auto& cat : categories())
     {

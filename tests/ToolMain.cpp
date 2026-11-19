@@ -136,6 +136,45 @@ int main (int argc, char** argv)
         }
         return 0;
     }
+    if (cmd == "icon")
+    {
+        // GenesixTool icon <dir>  ->  genesix-icon.png (1024 px, used by CMake ICON_BIG) + genesix.ico (installer)
+        const juce::File dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "branding");
+        dir.createDirectory();
+        auto render = [] (int px)
+        {
+            juce::Image img (juce::Image::ARGB, px, px, true);
+            juce::Graphics g (img);
+            g.addTransform (juce::AffineTransform::scale ((float) px / 64.0f)); // logo strokes are tuned for ~64 px
+            const juce::Rectangle<float> r (2, 2, 60, 60);
+            g.setColour (gx::ui::col::bgDeep);
+            g.fillRoundedRectangle (r, 13.0f);
+            g.setColour (gx::ui::col::accent.withAlpha (0.35f));
+            g.drawRoundedRectangle (r.reduced (0.5f), 13.0f, 1.0f);
+            gx::ui::Logo::drawMark (g, r.reduced (8.0f), 1.0f);
+            return img;
+        };
+        auto png = [] (const juce::Image& img) { juce::MemoryOutputStream m; juce::PNGImageFormat().writeImageToStream (img, m); return m.getMemoryBlock(); };
+        { auto f = dir.getChildFile ("genesix-icon.png"); f.replaceWithData (png (render (1024)).getData(), png (render (1024)).getSize()); }
+        // .ico with PNG-compressed entries (Windows Vista+)
+        const int sizes[] { 16, 24, 32, 48, 64, 128, 256 };
+        std::vector<juce::MemoryBlock> imgs;
+        for (int s : sizes) imgs.push_back (png (render (s)));
+        juce::MemoryOutputStream ico;
+        ico.writeShort (0); ico.writeShort (1); ico.writeShort ((short) imgs.size());
+        int offset = 6 + 16 * (int) imgs.size();
+        for (size_t i = 0; i < imgs.size(); ++i)
+        {
+            ico.writeByte ((char) (sizes[i] >= 256 ? 0 : sizes[i])); ico.writeByte ((char) (sizes[i] >= 256 ? 0 : sizes[i]));
+            ico.writeByte (0); ico.writeByte (0); ico.writeShort (1); ico.writeShort (32);
+            ico.writeInt ((int) imgs[i].getSize()); ico.writeInt (offset);
+            offset += (int) imgs[i].getSize();
+        }
+        for (auto& m : imgs) ico.write (m.getData(), m.getSize());
+        dir.getChildFile ("genesix.ico").replaceWithData (ico.getData(), ico.getDataSize());
+        std::printf ("wrote %s\n", dir.getFullPathName().toRawUTF8());
+        return 0;
+    }
     if (cmd == "screenshot")
     {
         // GenesixTool screenshot <outdir>

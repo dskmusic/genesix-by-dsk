@@ -101,7 +101,7 @@ private:
     CircuitBus bus;
     Box macros;
 
-    std::unique_ptr<GenHistory> history;
+    GenHistory* history = nullptr; // owned by the processor (survives closing the editor, not the session)
     std::thread worker;
     std::atomic<bool> jobDone { false }, busy { false }, jobFailed { false };
     Preset result;

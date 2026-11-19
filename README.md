@@ -31,7 +31,7 @@ Its main screen is a **smart preset generator**: pick a category, shape the char
   A sound that fails is discarded and regenerated. Every factory preset went through the same validation.
 - "The AI is creating your preset" console: typewriter messages in Spanish or English, 54+ lines available per category, never repeated back to back. Parameter values resolve on screen while the old patch is taken apart and the new one is assembled.
 - **Mutate** (gentle variation), **Blend** (with history, favourites or library), **section locks** (OSC, FILTER, ENV, MOD, FX, RHYTHM).
-- **Browser-like history** with **◀ ▶** buttons, Alt+←/→ shortcuts and an n/N counter. Generating after going back cuts the forward branch. The history persists across sessions and its limit is configurable.
+- **Browser-like history** with **◀ ▶** buttons, Alt+←/→ shortcuts and an n/N counter. Generating after going back cuts the forward branch. It keeps only the current session (it starts empty each time the plugin loads) and its limit is configurable.
 - Live displays at 60 fps that never touch the audio thread:
   - phosphor oscilloscope, spectrum analyser and VU meters;
   - LED matrix for voices, arp, gate, sequencer, envelopes and LFOs;
@@ -124,7 +124,7 @@ Download the latest build from **[Releases](https://github.com/dskmusic/genesix-
 | **macOS (Universal)** | `…-macos-universal-installer.pkg` or `…-vst3.zip`, `…-au.zip`, `…-standalone.zip` | Run the pkg, or copy to `~/Library/Audio/Plug-Ins/VST3` / `Components`. The binaries are not notarized: right-click → Open, or `xattr -dr com.apple.quarantine <path>` |
 | **Linux x86_64** | `…-linux-x64-vst3.tar.gz`, `…-standalone.tar.gz` | Extract `Genesix by DSK.vst3` into `~/.vst3/` |
 
-Verify downloads with `SHA256SUMS.txt`. Presets, history and settings are stored in `Documents/DSK Music/Genesix/`.
+Verify downloads with `SHA256SUMS.txt`. Presets and settings are stored in `Documents/DSK Music/Genesix/`.
 
 ## Quick start
 1. Open **GENERATOR**, choose a category, set the sliders and press **GENERATE** (Ctrl+Enter).

@@ -3,6 +3,7 @@
 #include "Params.h"
 #include "dsp/Engine.h"
 #include "preset/Preset.h"
+#include "gen/History.h"
 
 class GenesixProcessor : public juce::AudioProcessor
 {
@@ -48,6 +49,7 @@ public:
     gx::Telemetry& telemetry() { return engine.tele; }
     gx::PresetMeta currentMeta;          // metadata of the loaded preset
     std::atomic<int> presetGeneration { 0 }; // bumped whenever a full state/preset is applied (UI polls)
+    gx::GenHistory genHistory { 200 };      // generator ◀ ▶ history: current session only (UI thread)
 
     // Offline rendering helper (tool/tests/SFZ export): resets voices, deterministic.
     void renderOffline (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi, double sampleRate, int blockSize);

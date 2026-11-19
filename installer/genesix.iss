@@ -22,6 +22,8 @@ Compression=lzma2
 SolidCompression=yes
 LicenseFile=..\LICENSE
 DisableProgramGroupPage=yes
+SetupIconFile=..\branding\genesix.ico
+UninstallDisplayIcon={app}\Genesix by DSK.exe
 
 [Components]
 Name: "vst3"; Description: "VST3 plugin"; Types: full compact custom; Flags: fixed

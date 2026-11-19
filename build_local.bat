@@ -23,6 +23,7 @@ if /i not "%~2"=="package" goto :done
 for /f "usebackq delims=" %%v in (`python scripts\version.py`) do set "VER=%%v"
 python scripts\package.py --platform win --build build --config %CONFIG% --version %VER% || goto :fail
 set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+if not exist "%ISCC%" set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" goto :noInno
 "%ISCC%" /Q "/DAppVersion=%VER%" "/DArtDir=..\build\Genesix_artefacts\%CONFIG%" installer\genesix.iss || goto :fail
 python scripts\package.py --platform win --build build --checksums-only || goto :fail
