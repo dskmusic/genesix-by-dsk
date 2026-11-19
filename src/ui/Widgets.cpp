@@ -122,11 +122,11 @@ ParamKnob::ParamKnob (Context& c, int i, const juce::String& label) : ctx (c), i
     att = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (ctx.proc.apvts, d.id, slider);
     slider.textFromValueFunction = [d] (double v)
     {
-        if (d.unit == "Hz") return v >= 1000 ? juce::String (v / 1000.0, 2) + " kHz" : juce::String (v, v < 100 ? 1 : 0) + " Hz";
-        if (d.unit == "s") return v < 1 ? juce::String (v * 1000.0, 0) + " ms" : juce::String (v, 2) + " s";
+        if (d.unit == "Hz") return v >= 1000 ? juce::String (v / 1000.0, 2) + " kHz" : (v < 100 ? juce::String (v, 1) : juce::String ((int) std::lround (v))) + " Hz";
+        if (d.unit == "s") return v < 1 ? juce::String ((int) std::lround (v * 1000.0)) + " ms" : juce::String (v, 2) + " s";
         if (d.unit == "dB") return juce::String (v, 1) + " dB";
         if (d.kind == pkInt) return juce::String ((int) std::lround (v)) + (d.unit.isNotEmpty() ? " " + d.unit : juce::String());
-        if (d.range.start == 0 && d.range.end == 1 && d.unit.isEmpty()) return juce::String (v * 100.0, 0) + " %";
+        if (d.range.start == 0 && d.range.end == 1 && d.unit.isEmpty()) return juce::String ((int) std::lround (v * 100.0)) + " %";
         return juce::String (v, 2) + (d.unit.isNotEmpty() ? " " + d.unit : juce::String());
     };
     slider.updateText();

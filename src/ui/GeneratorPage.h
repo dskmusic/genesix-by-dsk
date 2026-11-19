@@ -1,23 +1,114 @@
 #pragma once
 #include "Pages.h"
+#include "../gen/Generator.h"
+#include "../gen/History.h"
+#include <thread>
 
 namespace gx::ui
 {
-class GeneratorPage : public Page
+// Big round GENERAR button with a burst animation.
+class GenerateButton : public juce::Component, public juce::SettableTooltipClient
+{
+public:
+    GenerateButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip ("Generar un preset nuevo (Ctrl+Enter)"); }
+    void paint (juce::Graphics&) override;
+    void mouseDown (const juce::MouseEvent&) override { pressed = true; repaint(); }
+    void mouseUp (const juce::MouseEvent& e) override { pressed = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
+    void burst();
+    void animate (float dt, float energy, bool busy);
+    std::function<void()> onClick;
+private:
+    struct Particle { juce::Point<float> p, v; float life = 0; juce::Colour c; };
+    std::vector<Particle> particles;
+    float spin = 0, pulse = 0, glow = 0;
+    bool pressed = false, working = false;
+    juce::Random rng;
+};
+
+// Console with typewriter lines and a blinking cursor.
+class AiConsole : public juce::Component
+{
+public:
+    void start (const juce::StringArray& lines, double duration);
+    void showIdle (const juce::String& text) { lines = { text }; typed = text.length(); lineIdx = 0; running = false; repaint(); }
+    void animate (double now);
+    void paint (juce::Graphics&) override;
+    bool finished() const { return ! running; }
+private:
+    juce::StringArray lines, shown;
+    int lineIdx = 0, typed = 0;
+    double t0 = 0, perLine = 0.3, now = 0;
+    bool running = false;
+};
+
+// Parameter readouts that scramble while "the AI thinks" and settle on the final values.
+class ResolveGrid : public juce::Component
+{
+public:
+    void setTarget (const Preset& p);
+    void animate (float scramble, float assemble, float disassemble);
+    void paint (juce::Graphics&) override;
+private:
+    struct Cell { juce::String label, value; };
+    std::array<Cell, 12> cells;
+    float scramble = 0, assemble = 1, disassemble = 0;
+    juce::Random rng;
+};
+
+class GeneratorPage : public Page, private juce::Timer
 {
 public:
     explicit GeneratorPage (Context& c);
+    ~GeneratorPage() override;
     void resized() override;
     void paint (juce::Graphics&) override;
-    bool handleKey (const juce::KeyPress&) { return false; }
-    void presetLoaded() {}
+    void tick (const Frame& f) override;
+    bool handleKey (const juce::KeyPress&);
+    void generate() { startJob (Job::Generate); }
+    bool isBusy() const { return busy.load(); }
+    void presetLoaded();
     std::function<void()> onPresetChanged, openEditor, openExport, openPresets;
+
 private:
+    enum class Job { Generate, Mutate, Blend };
+    void timerCallback() override;
+    void startJob (Job j, const Preset* other = nullptr);
+    void finishJob();
+    void historyStep (int dir);
+    void updateHistoryLabel();
+    void saveCurrent();
+    void showBlendMenu();
+    GenRequest makeRequest() const;
+
+    // left
+    juce::OwnedArray<juce::TextButton> catButtons;
+    juce::OwnedArray<juce::Slider> sliders;
+    juce::StringArray sliderNames;
+    juce::OwnedArray<juce::ToggleButton> locks;
+    juce::String category = "Lead";
+    // centre
+    GenerateButton genButton;
+    AiConsole console;
+    ResolveGrid grid;
+    juce::TextButton mutateBtn { "Mutar" }, blendBtn { "Mezclar" }, saveBtn { "Guardar" }, exportBtn { "Exportar" }, editorBtn { "Pasar a Editor" };
+    juce::TextButton backBtn { "<" }, fwdBtn { ">" };
+    juce::Label histLabel;
+    // right
     Scope scope;
     Spectrum spectrum;
     LedMatrix leds;
     VuMeter vu;
     CircuitBus bus;
+    Box macros;
+
+    std::unique_ptr<GenHistory> history;
+    std::thread worker;
+    std::atomic<bool> jobDone { false }, busy { false };
+    Preset result;
+    double jobStart = 0, minDuration = 1.5, lastAnim = 0, assembleStart = -10;
+    juce::String lastMsg;
+    Rng msgRng { (uint32_t) juce::Time::currentTimeMillis() };
+    float energy = 0;
 };
 
 std::unique_ptr<juce::Component> makeSfzPanel (Context& c);

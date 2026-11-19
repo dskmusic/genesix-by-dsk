@@ -1,6 +1,7 @@
 #include "Tests.h"
 #include "PluginEditor.h"
 #include "gen/Generator.h"
+#include "ui/GeneratorPage.h"
 
 int main (int argc, char** argv)
 {
@@ -98,6 +99,18 @@ int main (int argc, char** argv)
                 juce::MessageManager::getInstance()->runDispatchLoopUntil (4);
             }
         };
+        // generator: real generation (busy frame + finished frame)
+        ge->showPage (0);
+        pump (10);
+        ge->generatorPage().generate();
+        pump (30);
+        {
+            auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            juce::File f = out.getChildFile ("generator-working.png"); f.deleteFile();
+            juce::FileOutputStream os (f); juce::PNGImageFormat().writeImageToStream (img, os);
+        }
+        for (int k = 0; k < 400 && ge->generatorPage().isBusy(); ++k) pump (1);
+        first = true;
         struct Shot { int page, sub; const char* name; };
         const Shot shots[] { { 0, -1, "generator" }, { 1, -1, "presets" }, { 2, 0, "editor-osc" }, { 2, 1, "editor-filters" },
                              { 2, 2, "editor-mod" }, { 2, 3, "editor-arp-gate-seq" }, { 2, 4, "editor-fx" }, { 3, -1, "export" }, { 4, -1, "settings" } };

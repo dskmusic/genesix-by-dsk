@@ -27,6 +27,7 @@ public:
     void setUiScale (float s);
     void toast (const juce::String& msg);
     void advanceFrames (double dt);   // used by the screenshot tool
+    gx::ui::GeneratorPage& generatorPage() { return *generator; }
 
 private:
     void timerCallback() override;

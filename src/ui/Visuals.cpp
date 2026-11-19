@@ -72,7 +72,7 @@ void Scope::paint (juce::Graphics& g)
         trail = juce::Image (juce::Image::ARGB, juce::jmax (1, getWidth()), juce::jmax (1, getHeight()), true);
     {
         juce::Graphics tg (trail);
-        trail.multiplyAllAlphas (0.78f); // phosphor decay
+        trail.multiplyAllAlphas (0.62f); // phosphor decay
         juce::Path p;
         const float w = r.getWidth() - 8, h = r.getHeight() * 0.42f, cy = r.getCentreY();
         for (int i = 0; i < 512; ++i)
@@ -80,8 +80,8 @@ void Scope::paint (juce::Graphics& g)
             const float x = 4 + w * (float) i / 511.0f, y = cy - trace[(size_t) i] * h;
             if (i == 0) p.startNewSubPath (x, y); else p.lineTo (x, y);
         }
-        tg.setColour (col::phosphor.withAlpha (0.18f));
-        tg.strokePath (p, juce::PathStrokeType (6.0f));
+        tg.setColour (col::phosphor.withAlpha (0.12f));
+        tg.strokePath (p, juce::PathStrokeType (4.0f));
         tg.setColour (col::phosphor.withAlpha (0.9f));
         tg.strokePath (p, juce::PathStrokeType (1.6f));
     }
