@@ -12,6 +12,7 @@ namespace
 constexpr int kFps = 30, kW = 1920, kH = 1080, kSub = 8;
 constexpr double kSr = 48000.0;
 constexpr int kSamplesPerFrame = (int) (kSr / kFps), kBlock = kSamplesPerFrame / kSub;
+bool gBilingual = false;                                // "video <dir> bi": English + Spanish captions
 constexpr float kUiScale = 1.35f;                       // 1280x800 design -> 1728x1080
 const int kUiX = (kW - (int) (1280 * kUiScale)) / 2;
 
@@ -80,7 +81,13 @@ public:
     }
     void silence() { for (int n = 0; n < 128; ++n) proc.keyboardState.noteOff (1, n, 0.0f); events.clear(); }
 
-    void caption (const char* title, const char* sub = "") { capTitle = juce::String::fromUTF8 (title); capSub = juce::String::fromUTF8 (sub); capStart = vt; }
+    void caption (const char* title, const char* sub = "", const char* esTitle = "", const char* esSub = "")
+    {
+        capTitle = juce::String::fromUTF8 (title); capSub = juce::String::fromUTF8 (sub);
+        const auto et = juce::String::fromUTF8 (esTitle), es = juce::String::fromUTF8 (esSub);
+        capEs = gBilingual ? (es.isEmpty() ? et : et + juce::String::fromUTF8 (" — ") + es) : juce::String();
+        capStart = vt;
+    }
     void clearCaption() { capEnd = vt; }
 
     juce::Point<float> centreOf (juce::Component* c) const
@@ -289,10 +296,12 @@ private:
         float a = (float) juce::jlimit (0.0, 1.0, (vt - capStart) / 0.3);
         if (capEnd > capStart) a *= (float) juce::jlimit (0.0, 1.0, 1.0 - (vt - capEnd) / 0.3);
         if (a <= 0.0f) return;
-        auto big = font (34.0f, true), small = font (22.0f);
-        const float w = juce::jmax (textWidth (big, capTitle), textWidth (small, capSub)) + 70.0f;
-        const float h = capSub.isEmpty() ? 64.0f : 100.0f;
-        juce::Rectangle<float> r ((kW - w) * 0.5f, kH - 6.0f - h, w, h);
+        auto big = font (34.0f, true), small = font (22.0f), esFont = font (22.0f, true);
+        const float w = juce::jmax (textWidth (big, capTitle), textWidth (small, capSub), textWidth (esFont, capEs)) + 70.0f;
+        const float esH = capEs.isEmpty() ? 0.0f : 40.0f;
+        const float h = (capSub.isEmpty() ? 64.0f : 100.0f) + esH;
+        const float bottom = gBilingual ? kH - 92.0f : kH - 6.0f;   // bilingual version: lifted above the keyboard
+        juce::Rectangle<float> r ((kW - w) * 0.5f, bottom - h, w, h);
         g.setColour (juce::Colour (0xf0101214).withMultipliedAlpha (a));
         g.fillRoundedRectangle (r, 10.0f);
         g.setColour (col::accent.withAlpha (a));
@@ -305,6 +314,15 @@ private:
             g.setColour (col::textDim.withAlpha (a));
             g.setFont (small);
             g.drawText (capSub, r.withTrimmedLeft (10).withTrimmedTop (58).withHeight (30.0f), juce::Justification::centred);
+        }
+        if (capEs.isNotEmpty())
+        {
+            const auto line = r.withTrimmedLeft (10).withTrimmedTop (h - esH - 4.0f).withHeight (esH);
+            g.setColour (col::accent.withAlpha (0.35f * a));
+            g.fillRect (line.getX() + 40.0f, line.getY() + 2.0f, line.getWidth() - 80.0f, 1.0f);
+            g.setColour (col::accent2.withAlpha (a));
+            g.setFont (esFont);
+            g.drawText (capEs, line, juce::Justification::centred);
         }
     }
 
@@ -336,11 +354,19 @@ private:
             lg.setColour (col::textDim);
             lg.setFont (font (28.0f));
             if (! endCard)
+            {
                 lg.drawText ("Free software synthesizer with a smart preset generator", 0, 660, kW, 40, juce::Justification::centred);
+                if (gBilingual)
+                {
+                    lg.setColour (col::accent2.withAlpha (0.85f));
+                    lg.drawText (juce::String::fromUTF8 ("Sintetizador gratuito con generador inteligente de presets"), 0, 704, kW, 40, juce::Justification::centred);
+                }
+            }
             else
             {
-                lg.drawText ("Free & open source (GPLv3)", 0, 610, kW, 40, juce::Justification::centred);
-                lg.drawText (juce::String::fromUTF8 ("VST3 \xc2\xb7 AU \xc2\xb7 Standalone   \xe2\x80\x94   Windows \xc2\xb7 macOS \xc2\xb7 Linux"), 0, 656, kW, 40, juce::Justification::centred);
+                lg.drawText (gBilingual ? juce::String::fromUTF8 ("Free & open source  ·  Gratuito y de código abierto  (GPLv3)")
+                                        : juce::String ("Free & open source (GPLv3)"), 0, 610, kW, 40, juce::Justification::centred);
+                lg.drawText (juce::String::fromUTF8 ("VST3 · AU · Standalone   —   Windows · macOS · Linux"), 0, 656, kW, 40, juce::Justification::centred);
                 lg.setColour (col::accent2);
                 lg.setFont (font (40.0f, true));
                 lg.drawText ("dskmusic.com", 0, 740, kW, 50, juce::Justification::centred);
@@ -357,7 +383,7 @@ private:
     std::vector<float> L, R;
     juce::Point<float> cursor, clickPos;
     double clickAt = -10;
-    juce::String capTitle, capSub;
+    juce::String capTitle, capSub, capEs;
     double capStart = 0, capEnd = 0;
     double cardFadeIn = 0, cardFadeOut = 0, cardOutStart = 0;
 };
@@ -398,6 +424,7 @@ int runVideo (int argc, char** argv)
 {
     const juce::File dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "video");
     dir.createDirectory();
+    gBilingual = argc > 3 && juce::String (argv[3]) == "bi";
     Director d (dir);
     auto& gp = d.ed->generatorPage();
 
@@ -411,7 +438,8 @@ int runVideo (int argc, char** argv)
     d.card (false, 0.0, 2.6, 0.7);
 
     // ---- generator: bass
-    d.caption ("Smart preset generator", "Pick a category, shape the character, press GENERATE");
+    d.caption ("Smart preset generator", "Pick a category, shape the character, press GENERATE",
+               "Generador inteligente de presets", "elige una categoría, ajusta el carácter y pulsa GENERATE");
     d.click (d.button ("Bass", &gp));
     d.drag (d.genSlider (2), 0.7);                  // aggression
     d.generate();
@@ -419,7 +447,8 @@ int runVideo (int argc, char** argv)
     d.wait (4.2);
 
     // ---- pad
-    d.caption ("Every sound is rendered, checked and level-matched", "Rule-based sound design, 11 categories, 50+ archetypes");
+    d.caption ("Every sound is rendered, checked and level-matched", "Rule-based sound design, 11 categories, 50+ archetypes",
+               "Cada sonido se renderiza, se comprueba y se nivela", "diseño sonoro por reglas, 11 categorías, más de 50 arquetipos");
     d.click (d.button ("Pad", &gp));
     d.drag (d.genSlider (3), 0.85, 0.7);            // space
     d.generate();
@@ -427,7 +456,8 @@ int runVideo (int argc, char** argv)
     d.wait (4.6);
 
     // ---- lead
-    d.caption ("Brightness \xc2\xb7 Movement \xc2\xb7 Aggression \xc2\xb7 Space \xc2\xb7 Weirdness");
+    d.caption ("Brightness · Movement · Aggression · Space · Weirdness", "",
+               "Brillo · Movimiento · Agresividad · Espacio · Rareza");
     d.click (d.button ("Lead", &gp));
     d.drag (d.genSlider (0), 0.75, 0.6);            // brightness
     d.generate();
@@ -435,7 +465,7 @@ int runVideo (int argc, char** argv)
     d.wait (4.4);
 
     // ---- mutate + history
-    d.caption ("Mutate, blend and browse your session history");
+    d.caption ("Mutate, blend and browse your session history", "", "Muta, mezcla y recorre el historial de la sesión");
     d.click (d.button ("Mutate", &gp), 0.1);
     for (int i = 0; i < 10 * kFps && gp.isBusy(); ++i) d.frame();
     d.wait (0.3);
@@ -447,7 +477,8 @@ int runVideo (int argc, char** argv)
     d.silence();
 
     // ---- presets
-    d.caption ("220 factory presets", "Categories, tags, instant search, favourites, ratings");
+    d.caption ("220 factory presets", "Categories, tags, instant search, favourites, ratings",
+               "220 presets de fábrica", "categorías, etiquetas, búsqueda instantánea, favoritos y valoraciones");
     d.click (d.button ("PRESETS"), 0.4);
     d.type (d.find<juce::TextEditor> (d.ed.get()), "trance");
     d.wait (0.3);
@@ -456,27 +487,34 @@ int runVideo (int argc, char** argv)
     d.wait (2.8);
 
     // ---- editor tour while the arp keeps playing
-    d.caption ("Full editor", "4 oscillators: wavetable, analog, FM, noise/sampler and the new Spectral Mutation");
+    d.caption ("Full editor", "4 oscillators: wavetable, analog, FM, noise/sampler and the new Spectral Mutation",
+               "Editor completo", "4 osciladores: wavetable, analógico, FM, ruido/sampler y el nuevo Spectral Mutation");
     d.click (d.button ("EDITOR"), 0.2);
     d.click (d.button ("OSC"), 2.2);
-    d.caption ("2 filters", "Ladder, SVF, comb and formant, in series or parallel");
+    d.caption ("2 filters", "Ladder, SVF, comb and formant, in series or parallel",
+               "2 filtros", "ladder, SVF, comb y formante, en serie o en paralelo");
     d.click (d.button ("FILTERS"), 2.4);
-    d.caption ("Modulation", "4 envelopes \xc2\xb7 4 LFOs \xc2\xb7 8 macros \xc2\xb7 drag-and-drop matrix");
+    d.caption ("Modulation", "4 envelopes · 4 LFOs · 8 macros · drag-and-drop matrix",
+               "Modulación", "4 envolventes · 4 LFO · 8 macros · matriz de arrastrar y soltar");
     d.click (d.button ("MOD"), 2.4);
-    d.caption ("Rhythm", "Arpeggiator \xc2\xb7 trance gate \xc2\xb7 step sequencer \xc2\xb7 chords & strum");
+    d.caption ("Rhythm", "Arpeggiator · trance gate · step sequencer · chords & strum",
+               "Ritmo", "arpegiador · trance gate · secuenciador por pasos · acordes y strum");
     d.click (d.button ("ARP / GATE / SEQ"), 2.6);
-    d.caption ("12 re-orderable effects", "Including two originals: Shimmer and Granular Smear");
+    d.caption ("12 re-orderable effects", "Including two originals: Shimmer and Granular Smear",
+               "12 efectos reordenables", "incluidos dos originales: Shimmer y Granular Smear");
     d.click (d.button ("FX"), 2.4);
 
     // ---- export + settings
-    d.caption ("Export any sound to SFZ", "Multisamples with velocity layers and click-free loops");
+    d.caption ("Export any sound to SFZ", "Multisamples with velocity layers and click-free loops",
+               "Exporta cualquier sonido a SFZ", "multisamples con capas de velocidad y loops sin clics");
     d.click (d.button ("EXPORT"), 2.4);
-    d.caption ("Resizable 50\xe2\x80\x93" "200%", "English / Espa\xc3\xb1ol interface");
+    d.caption ("Resizable 50–200%", "English / Español interface",
+               "Escalable del 50 al 200 %", "interfaz en inglés y en español");
     d.click (d.button ("SETTINGS"), 2.0);
     d.silence();
 
     // ---- one more generation, then the end card
-    d.caption ("Your next sound is one click away");
+    d.caption ("Your next sound is one click away", "", "Tu próximo sonido, a un clic");
     d.click (d.button ("GENERATOR"), 0.2);
     d.click (d.button ("Pluck", &gp));
     d.generate();
