@@ -11,6 +11,7 @@ Its main screen is a **smart preset generator**: pick a category, shape the char
 
 [![build](https://github.com/dskmusic/genesix-by-dsk/actions/workflows/build.yml/badge.svg)](https://github.com/dskmusic/genesix-by-dsk/actions/workflows/build.yml)
 [![release](https://img.shields.io/github/v/release/dskmusic/genesix-by-dsk)](https://github.com/dskmusic/genesix-by-dsk/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/dskmusic/genesix-by-dsk/total)](https://github.com/dskmusic/genesix-by-dsk/releases)
 ![license](https://img.shields.io/badge/license-GPLv3-blue)
 
 ---

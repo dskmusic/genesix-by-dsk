@@ -11,6 +11,7 @@ Su pantalla principal es un **generador inteligente de presets**: eliges categor
 
 [![build](https://github.com/dskmusic/genesix-by-dsk/actions/workflows/build.yml/badge.svg)](https://github.com/dskmusic/genesix-by-dsk/actions/workflows/build.yml)
 [![release](https://img.shields.io/github/v/release/dskmusic/genesix-by-dsk)](https://github.com/dskmusic/genesix-by-dsk/releases/latest)
+[![descargas](https://img.shields.io/github/downloads/dskmusic/genesix-by-dsk/total?label=descargas)](https://github.com/dskmusic/genesix-by-dsk/releases)
 ![licencia](https://img.shields.io/badge/licencia-GPLv3-blue)
 
 ---
