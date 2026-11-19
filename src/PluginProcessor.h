@@ -47,7 +47,7 @@ public:
     void setParamPlain (int index, float plainValue); // notifies host
     gx::Telemetry& telemetry() { return engine.tele; }
     gx::PresetMeta currentMeta;          // metadata of the loaded preset
-    std::function<void()> onPresetLoaded; // UI refresh hook (message thread)
+    std::atomic<int> presetGeneration { 0 }; // bumped whenever a full state/preset is applied (UI polls)
 
     // Offline rendering helper (tool/tests/SFZ export): resets voices, deterministic.
     void renderOffline (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi, double sampleRate, int blockSize);

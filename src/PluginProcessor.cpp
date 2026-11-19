@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "preset/Render.h"
 
 GenesixProcessor::GenesixProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
@@ -100,28 +101,7 @@ void GenesixProcessor::setSample (std::unique_ptr<gx::SampleData> s)
 
 void GenesixProcessor::renderOffline (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi, double sampleRate, int blockSize)
 {
-    // separate engine instance: safe to call from the message/worker thread while audio runs
-    auto eng = std::make_unique<gx::Engine>();
-    eng->prepare (sampleRate, blockSize);
-    std::vector<float> snap (raw.size());
-    for (size_t i = 0; i < raw.size(); ++i) snap[i] = raw[i]->load();
-    auto pats = std::make_unique<gx::Patterns> (patterns);
-    std::array<const gx::Wavetable*, gx::kNumOsc> ut {};
-    for (int i = 0; i < gx::kNumOsc; ++i) ut[(size_t) i] = userTables[(size_t) i].load();
-    gx::Transport tr;
-    tr.bpm = 120.0;
-    tr.playing = true;
-    juce::AudioBuffer<float> block (2, blockSize);
-    for (int pos = 0; pos < out.getNumSamples(); pos += blockSize)
-    {
-        const int n = juce::jmin (blockSize, out.getNumSamples() - pos);
-        block.setSize (2, n, false, false, true);
-        juce::MidiBuffer m;
-        m.addEvents (midi, pos, n, -pos);
-        tr.ppq = (double) pos / sampleRate * 2.0;
-        eng->process (block, m, snap.data(), *pats, tr, ut, samplePtr.load());
-        for (int c = 0; c < juce::jmin (2, out.getNumChannels()); ++c) out.copyFrom (c, pos, block, c, 0, n);
-    }
+    gx::renderPreset (gx::Preset::capture (*this), midi, sampleRate, blockSize, out);
 }
 
 juce::AudioProcessorEditor* GenesixProcessor::createEditor() { return new GenesixEditor (*this); }
@@ -138,6 +118,6 @@ void GenesixProcessor::setStateInformation (const void* data, int size)
     if (gx::Preset::fromJson (juce::String::fromUTF8 (static_cast<const char*> (data), size), p))
     {
         p.applyTo (*this);
-        if (onPresetLoaded) juce::MessageManager::callAsync ([this] { if (onPresetLoaded) onPresetLoaded(); });
+        presetGeneration.fetch_add (1);
     }
 }

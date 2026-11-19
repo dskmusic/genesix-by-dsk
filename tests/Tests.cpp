@@ -196,8 +196,47 @@ static void testRealtimeConditions()
     check (q.getPatterns().seq[3] == 0.5f, "state: patterns restored");
 }
 
+static void testStress()
+{
+    std::puts ("[stress: note floods, modes, pedal, MPE]");
+    for (int mode = 0; mode < 3; ++mode)
+    {
+        GenesixProcessor p;
+        setParam (p, "play_mode", (float) mode);
+        setParam (p, "polyphony", 4);
+        setParam (p, "glide", 0.05f);
+        setParam (p, "mpe", 1);
+        setParam (p, "uni_voices", 3);
+        p.prepareToPlay (48000, 128);
+        juce::Random r (mode + 1);
+        bool ok = true;
+        juce::AudioBuffer<float> b (2, 128);
+        for (int k = 0; k < 600; ++k)
+        {
+            juce::MidiBuffer m;
+            for (int e = 0; e < 6; ++e)
+            {
+                const int pos = r.nextInt (128), note = 20 + r.nextInt (90), ch = 1 + r.nextInt (16);
+                switch (r.nextInt (6))
+                {
+                    case 0: case 1: m.addEvent (juce::MidiMessage::noteOn (ch, note, (juce::uint8) (1 + r.nextInt (127))), pos); break;
+                    case 2: m.addEvent (juce::MidiMessage::noteOff (ch, note), pos); break;
+                    case 3: m.addEvent (juce::MidiMessage::controllerEvent (1, 64, r.nextBool() ? 127 : 0), pos); break;
+                    case 4: m.addEvent (juce::MidiMessage::pitchWheel (ch, r.nextInt (16384)), pos); break;
+                    default: m.addEvent (juce::MidiMessage::channelPressureChange (ch, r.nextInt (128)), pos); break;
+                }
+            }
+            if (k == 500) m.addEvent (juce::MidiMessage::allNotesOff (1), 0);
+            p.processBlock (b, m);
+            ok &= analyse (b).finite && analyse (b).peak < 4.01f;
+        }
+        check (ok, "stress mode " + juce::String (mode));
+    }
+}
+
 int runAll()
 {
+    testStress();
     testParams();
     testRender();
     testOscillators();
