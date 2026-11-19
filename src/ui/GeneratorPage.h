@@ -103,7 +103,7 @@ private:
 
     std::unique_ptr<GenHistory> history;
     std::thread worker;
-    std::atomic<bool> jobDone { false }, busy { false };
+    std::atomic<bool> jobDone { false }, busy { false }, jobFailed { false };
     Preset result;
     double jobStart = 0, minDuration = 1.5, lastAnim = 0, assembleStart = -10;
     juce::String lastMsg;

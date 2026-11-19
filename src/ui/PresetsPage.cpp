@@ -140,8 +140,11 @@ void PresetsPage::requery()
     list.repaint();
     info.setText (juce::String ((int) shown.size()) + " presets", juce::dontSendNotification);
     const int cur = ctx.library.indexOfUuid (ctx.proc.currentMeta.uuid);
+    syncingSelection = true; // reflect the loaded preset without reloading it
+    list.deselectAllRows();
     for (int r = 0; r < (int) shown.size(); ++r)
         if (shown[(size_t) r] == cur) { list.selectRow (r, false, true); break; }
+    syncingSelection = false;
 }
 
 void PresetsPage::paintListBoxItem (int row, juce::Graphics& g, int w, int h, bool sel)
@@ -188,7 +191,7 @@ void PresetsPage::loadRow (int row)
     }
 }
 
-void PresetsPage::selectedRowsChanged (int row) { loadRow (row); }
+void PresetsPage::selectedRowsChanged (int row) { if (! syncingSelection) loadRow (row); }
 void PresetsPage::listBoxItemDoubleClicked (int row, const juce::MouseEvent&) { loadRow (row); }
 void PresetsPage::listBoxItemClicked (int row, const juce::MouseEvent& e)
 {

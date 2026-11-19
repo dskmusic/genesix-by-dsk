@@ -292,16 +292,20 @@ void GeneratorPage::startJob (Job j, const Preset* other)
             req.base = &current;
             out = Generator::generate (req);
         }
-        else if (j == Job::Mutate)
-        {
-            out = Generator::mutate (current, 0.35f, req.seed, req.locks);
-            Generator::validate (out);
-            out.meta.tags = current.meta.tags;
-        }
         else
         {
-            out = Generator::blend (current, oc ? *oc : current, 0.5f, req.seed);
-            Generator::validate (out);
+            // live variations go through the same validation; retry with new seeds, never apply a failing sound
+            bool ok = false;
+            for (int a = 0; a < 8 && ! ok; ++a)
+            {
+                const uint32_t seed = req.seed + (uint32_t) a * 104729u;
+                out = j == Job::Mutate ? Generator::mutate (current, 0.35f - 0.03f * (float) a, seed, req.locks)
+                                       : Generator::blend (current, oc ? *oc : current, 0.5f, seed);
+                if (out.meta.category.isEmpty()) out.meta.category = current.meta.category;
+                ok = Generator::validate (out).ok;
+                if (j == Job::Mutate) out.meta.tags = current.meta.tags;
+            }
+            jobFailed = ! ok;
         }
         result = std::move (out);
         jobDone = true;
@@ -318,6 +322,13 @@ void GeneratorPage::startJob (Job j, const Preset* other)
 void GeneratorPage::finishJob()
 {
     if (worker.joinable()) worker.join();
+    if (jobFailed.exchange (false))
+    {
+        busy = false;
+        console.showIdle (juce::String::fromUTF8 ("La variación no pasó la validación: se conserva el sonido actual."));
+        if (ctx.toast) ctx.toast (juce::String::fromUTF8 ("Variación descartada (no pasó la validación de calidad)"));
+        return;
+    }
     result.applyTo (ctx.proc);
     history->setLimit (ctx.settings.historyLimit());
     history->push (result);

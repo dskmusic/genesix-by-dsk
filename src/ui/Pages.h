@@ -118,6 +118,7 @@ private:
                      prevBtn { "Anterior" }, nextBtn { "Siguiente" }, folderBtn { "Nueva carpeta" }, rescanBtn { "Reescanear" };
     juce::Label info;
     std::vector<int> shown;
+    bool syncingSelection = false;
     std::unique_ptr<juce::FileChooser> chooser;
 };
 

@@ -8,6 +8,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - **PRESETS**: Omnisphere-style manager (category/sub-category tree, character tags, type/author/folder filters, instant search, sorting, stars, favourites, use count, preview on select, keyboard navigation, save/save as/rename/duplicate/delete/move/edit metadata, user folders, import/export of presets and banks).
 - **201 factory presets** (all generated, validated and de-duplicated; arp, trance gate and step-sequencer presets included).
 - **EDITOR**: OSC (waveform views, wavetable editor/importer), FILTROS (response view), MOD (envelope views, drawable LFOs, macros, drag-and-drop matrix), ARP/GATE/SEQ (step lanes), FX (reorderable chain); undo/redo, A/B, section copy/paste, MIDI learn.
+- Simple sampler: load a WAV/AIFF/FLAC into the Noise/Sample oscillator (embedded in presets).
 - **EXPORTAR**: `.genesix` export/import and SFZ multisample export (velocity layers, crossfaded loops, batch, cancellable progress, warnings).
 - **AJUSTES**: UI scale 50–200 %, animation level, AI messages on/off and language, history limit, preview on select, MIDI-learn reset.
 - FL-Studio-style LookAndFeel, vector logo linking to dskmusic.com, About box.

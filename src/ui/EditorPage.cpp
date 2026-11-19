@@ -141,6 +141,9 @@ public:
         view = &add<OscView> (c.proc, o);
         edit = &add<juce::TextButton> ("Editar WT");
         edit->onClick = [openWt, o] { openWt (o); };
+        loadSmp = &add<juce::TextButton> ("Cargar sample...");
+        loadSmp->setTooltip (juce::String::fromUTF8 ("Carga un WAV/AIFF/FLAC (mono, máx. 10 s, nota raíz C4). Tipo de ruido 'Sample'. Shape > 50 % = loop."));
+        loadSmp->onClick = [this] { loadSample(); };
         for (int f : { oLevel, oPan, oOct, oSemi, oFine, oMorph, oShape, oSync, oFold })
             common.push_back (&add<ParamKnob> (c, P::osc (o, f)));
         for (int f : { oFmR2, oFmR3, oFmR4, oFmI2, oFmI3, oFmI4 }) fm.push_back (&add<ParamKnob> (c, P::osc (o, f)));
@@ -163,7 +166,8 @@ private:
         type->setBounds (top.removeFromLeft (150).reduced (2, 1));
         table->setVisible (t == otWavetable); noise->setVisible (t == otNoise); algo->setVisible (t == otFM); edit->setVisible (t == otWavetable);
         if (t == otWavetable) { table->setBounds (top.removeFromLeft (140).reduced (2, 1)); edit->setBounds (top.removeFromLeft (84).reduced (2, 1)); }
-        if (t == otNoise) noise->setBounds (top.removeFromLeft (130).reduced (2, 1));
+        loadSmp->setVisible (t == otNoise);
+        if (t == otNoise) { noise->setBounds (top.removeFromLeft (120).reduced (2, 1)); loadSmp->setBounds (top.removeFromLeft (110).reduced (2, 1)); }
         if (t == otFM) algo->setBounds (top.removeFromLeft (130).reduced (2, 1));
         randPh->setBounds (top.removeFromRight (100));
         r.removeFromTop (4);
@@ -176,9 +180,37 @@ private:
         if (t == otMutation) ks.push_back (mut);
         gridKnobs (ks, r, t == otFM ? 8 : 5);
     }
+    void loadSample()
+    {
+        chooser = std::make_unique<juce::FileChooser> ("Cargar sample", juce::File(), "*.wav;*.aif;*.aiff;*.flac");
+        chooser->launchAsync (juce::FileBrowserComponent::openMode, [this] (const juce::FileChooser& fc)
+        {
+            auto f = fc.getResult();
+            if (! f.existsAsFile()) return;
+            juce::AudioFormatManager fm;
+            fm.registerBasicFormats();
+            std::unique_ptr<juce::AudioFormatReader> rd (fm.createReaderFor (f));
+            if (! rd) { if (ctx.toast) ctx.toast ("Formato no soportado"); return; }
+            const int len = (int) std::min<juce::int64> (rd->lengthInSamples, (juce::int64) (rd->sampleRate * 10.0));
+            juce::AudioBuffer<float> b ((int) rd->numChannels, len);
+            rd->read (&b, 0, len, 0, true, true);
+            auto s = std::make_unique<SampleData>();
+            s->data.assign ((size_t) len, 0.0f);
+            for (int c = 0; c < b.getNumChannels(); ++c)
+                for (int i = 0; i < len; ++i) s->data[(size_t) i] += b.getSample (c, i) / (float) b.getNumChannels();
+            s->sampleRate = rd->sampleRate;
+            s->rootNote = 60;
+            s->name = f.getFileNameWithoutExtension();
+            ctx.proc.setSample (std::move (s));
+            ctx.proc.setParamPlain (P::osc (osc, oType), (float) otNoise);
+            ctx.proc.setParamPlain (P::osc (osc, oNoise), (float) ntSample);
+            if (ctx.toast) ctx.toast ("Sample cargado: " + f.getFileName());
+        });
+    }
     int osc, lastType = -1;
     ParamToggle* on; ParamCombo *type, *table, *noise, *algo;
-    OscView* view; juce::TextButton* edit; ParamKnob* mut; ParamToggle* randPh;
+    OscView* view; juce::TextButton *edit, *loadSmp; ParamKnob* mut; ParamToggle* randPh;
+    std::unique_ptr<juce::FileChooser> chooser;
     std::vector<juce::Component*> common, fm;
 };
 
