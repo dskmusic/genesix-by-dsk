@@ -3,6 +3,8 @@
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-11-19
 ### Added
 - Full English/Spanish interface (all labels, menus, tooltips, dialogs and SFZ warnings). First run follows the system language; switch it in Settings > Idioma / Language (the whole interface is rebuilt instantly, keeping the current page and generator settings).
 - Application icon for the Standalone `.exe`/`.app`, the Windows installer and its uninstaller entry (`branding/`, regenerate with `GenesixTool icon branding`).
