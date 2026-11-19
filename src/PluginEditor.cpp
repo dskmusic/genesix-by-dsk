@@ -31,22 +31,12 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
         toast (gx::L ("MIDI Learn: mueve un control de tu controlador para ", "MIDI Learn: move a control on your controller for ") + gx::paramDefs()[(size_t) param].name);
     };
 
+    ctx.languageChanged = [this] { pendingRebuild = true; }; // rebuilt from the timer, never inside the combo callback
+
     addAndMakeVisible (root);
-    header = std::make_unique<gx::ui::Header> (ctx, [this] (int t) { showPage (t); });
-    generator = std::make_unique<gx::ui::GeneratorPage> (ctx);
-    presets = std::make_unique<gx::ui::PresetsPage> (ctx);
-    editorPage = std::make_unique<gx::ui::EditorPage> (ctx);
-    exportPage = std::make_unique<gx::ui::ExportPage> (ctx);
-    settingsPage = std::make_unique<gx::ui::SettingsPage> (ctx, [this] (float s) { setUiScale (s); }, [this] { about->setVisible (true); about->toFront (false); });
-    about = std::make_unique<gx::ui::AboutOverlay>();
-    exportPage->sfzPanel = gx::ui::makeSfzPanel (ctx);
-    if (exportPage->sfzPanel) exportPage->addAndMakeVisible (*exportPage->sfzPanel);
-    pages = { generator.get(), presets.get(), editorPage.get(), exportPage.get(), settingsPage.get() };
-    root.addAndMakeVisible (*header);
-    for (auto* pg : pages) root.addChildComponent (pg);
     root.addAndMakeVisible (keyboard);
-    root.addChildComponent (*about);
     root.addChildComponent (toastLabel);
+    buildUi();
     keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, gx::ui::col::accent.withAlpha (0.8f));
     keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, gx::ui::col::accent.withAlpha (0.3f));
     keyboard.setLowestVisibleKey (24);
@@ -56,17 +46,6 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
     toastLabel.setColour (juce::Label::textColourId, gx::ui::col::text);
     toastLabel.setJustificationType (juce::Justification::centred);
     toastLabel.setFont (gx::ui::font (13.0f, true));
-
-    header->onPresetStep = [this] (int d) { presets->step (d); };
-    header->onAbout = [this] { about->setVisible (true); about->toFront (false); };
-    header->onAB = [this] { toggleAB(); };
-    header->onUndo = [this] { undo.performUndo(); refreshAll(); };
-    header->onRedo = [this] { undo.performRedo(); refreshAll(); };
-    presets->onLoaded = [this] (const gx::Preset& pr) { header->setPresetName (pr.meta.name); generator->presetLoaded(); };
-    generator->onPresetChanged = [this] { header->setPresetName (proc.currentMeta.name); undo.reset(); };
-    generator->openEditor = [this] { showPage (2); };
-    generator->openExport = [this] { showPage (3); };
-    generator->openPresets = [this] { showPage (1); };
 
     tooltips = std::make_unique<juce::TooltipWindow> (&root, 600);
     constrainer.setFixedAspectRatio ((double) kDesignW / kDesignH);
@@ -80,6 +59,55 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
     lastTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
     lastPresetGen = proc.presetGeneration.load();
     startTimerHz (60);
+}
+
+// Builds header + pages with the current language (gx::uiEnglish()).
+void GenesixEditor::buildUi()
+{
+    header = std::make_unique<gx::ui::Header> (ctx, [this] (int t) { showPage (t); });
+    generator = std::make_unique<gx::ui::GeneratorPage> (ctx);
+    presets = std::make_unique<gx::ui::PresetsPage> (ctx);
+    editorPage = std::make_unique<gx::ui::EditorPage> (ctx);
+    exportPage = std::make_unique<gx::ui::ExportPage> (ctx);
+    settingsPage = std::make_unique<gx::ui::SettingsPage> (ctx, [this] (float s) { setUiScale (s); }, [this] { about->setVisible (true); about->toFront (false); });
+    about = std::make_unique<gx::ui::AboutOverlay>();
+    exportPage->sfzPanel = gx::ui::makeSfzPanel (ctx);
+    if (exportPage->sfzPanel) exportPage->addAndMakeVisible (*exportPage->sfzPanel);
+    pages = { generator.get(), presets.get(), editorPage.get(), exportPage.get(), settingsPage.get() };
+    root.addAndMakeVisible (*header);
+    for (auto* pg : pages) root.addChildComponent (pg);
+    root.addChildComponent (*about);
+    toastLabel.toFront (false);
+
+    header->onPresetStep = [this] (int d) { presets->step (d); };
+    header->onAbout = [this] { about->setVisible (true); about->toFront (false); };
+    header->onAB = [this] { toggleAB(); };
+    header->onUndo = [this] { undo.performUndo(); refreshAll(); };
+    header->onRedo = [this] { undo.performRedo(); refreshAll(); };
+    header->abButton.setButtonText (abActive == 0 ? "A" : "B");
+    presets->onLoaded = [this] (const gx::Preset& pr) { header->setPresetName (pr.meta.name); generator->presetLoaded(); };
+    generator->onPresetChanged = [this] { header->setPresetName (proc.currentMeta.name); undo.reset(); };
+    generator->openEditor = [this] { showPage (2); };
+    generator->openExport = [this] { showPage (3); };
+    generator->openPresets = [this] { showPage (1); };
+}
+
+// Language switch: recreate every page so all labels, menus and tooltips change at once.
+void GenesixEditor::rebuildUi()
+{
+    pendingRebuild = false;
+    gx::uiEnglish() = settings.messageLanguage() == "en";
+    const auto genState = generator->uiState();
+    const int page = currentPage, sub = editorPage->currentSub();
+    pages.clear();
+    header.reset(); generator.reset(); presets.reset(); editorPage.reset(); exportPage.reset(); settingsPage.reset(); about.reset();
+    buildUi();
+    generator->setUiState (genState);
+    editorPage->showSub (sub);
+    resized();
+    header->setPresetName (proc.currentMeta.name);
+    showPage (page);
+    toast (gx::L ("Idioma: Español", "Language: English"));
 }
 
 GenesixEditor::~GenesixEditor()
@@ -179,6 +207,7 @@ void GenesixEditor::timerCallback()
         if (const int g = proc.presetGeneration.load(); g != lastPresetGen) { lastPresetGen = g; refreshAll(); }
     }
     if (toastLabel.isVisible() && now > toastUntil) toastLabel.setVisible (false);
+    if (pendingRebuild && ! generator->isBusy()) rebuildUi(); // waits for a running generation to finish
 }
 
 bool GenesixEditor::keyPressed (const juce::KeyPress& k)

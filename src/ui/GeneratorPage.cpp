@@ -183,6 +183,23 @@ void ResolveGrid::paint (juce::Graphics& g)
 }
 
 // ================================================================ GeneratorPage
+GeneratorPage::UiState GeneratorPage::uiState() const
+{
+    UiState s { category, {}, {} };
+    for (auto* sl : sliders) s.sliders.push_back (sl->getValue());
+    for (auto* t : locks) s.locks.push_back (t->getToggleState());
+    return s;
+}
+
+void GeneratorPage::setUiState (const UiState& s)
+{
+    category = s.category;
+    for (auto* b : catButtons) b->setToggleState (b->getButtonText() == category, juce::dontSendNotification);
+    for (int i = 0; i < juce::jmin (sliders.size(), (int) s.sliders.size()); ++i) sliders[i]->setValue (s.sliders[(size_t) i], juce::dontSendNotification);
+    for (int i = 0; i < juce::jmin (locks.size(), (int) s.locks.size()); ++i) locks[i]->setToggleState (s.locks[(size_t) i], juce::dontSendNotification);
+    repaint();
+}
+
 GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macros")
 {
     history = &ctx.proc.genHistory;

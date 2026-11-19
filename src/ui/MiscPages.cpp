@@ -260,10 +260,7 @@ SettingsPage::SettingsPage (Context& c, std::function<void (float)> setScale, st
     {
         const bool en = langBox.getSelectedItemIndex() == 1;
         ctx.settings.setMessageLanguage (en ? "en" : "es");
-        // ponytail: labels are built once, so the full switch applies on the next editor open; AI messages switch now
-        uiEnglish() = en;
-        if (ctx.toast) ctx.toast (L ("Idioma cambiado: cierra y vuelve a abrir la ventana del plugin para aplicarlo del todo.",
-                                     "Language changed: close and reopen the plugin window to apply it everywhere."));
+        if (ctx.languageChanged) ctx.languageChanged();
     };
     aiMsgs.setToggleState (ctx.settings.aiMessages(), juce::dontSendNotification);
     aiMsgs.onClick = [this] { ctx.settings.setAiMessages (aiMsgs.getToggleState()); };

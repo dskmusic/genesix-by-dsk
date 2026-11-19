@@ -61,6 +61,7 @@ struct Context
     std::function<void (int paramIndex)> startMidiLearn;
     std::function<void()> refreshAll;               // repaint/sync everything after big changes
     std::function<void (const juce::String&)> toast;
+    std::function<void()> languageChanged;          // rebuild the whole UI in the new language
 };
 
 // ---------------------------------------------------------------- controls

@@ -228,9 +228,17 @@ int main (int argc, char** argv)
             juce::PNGImageFormat().writeImageToStream (img, os);
             std::printf ("wrote %s\n", f.getFullPathName().toRawUTF8());
         }
+        // language switch: whole UI rebuilt live, generator state kept
+        const auto before = ge->generatorPage().uiState();
+        gx::forcedLanguage() = gx::uiEnglish() ? "es" : "en";
+        ge->rebuildUi();
+        pump (10);
+        const auto after = ge->generatorPage().uiState();
+        const bool ok = gx::uiEnglish() == (gx::forcedLanguage() == "en") && after.category == before.category && after.sliders == before.sliders;
+        std::printf ("language rebuild: %s\n", ok ? "OK" : "FAILED");
         ed->removeFromDesktop();
         ed.reset();
-        return 0;
+        return ok ? 0 : 1;
     }
     std::fprintf (stderr, "usage: GenesixTool test\n");
     return 2;

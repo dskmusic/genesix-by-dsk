@@ -70,6 +70,7 @@ public:
     void paint (juce::Graphics&) override;
     void refresh() override;
     void showSub (int i);
+    int currentSub() const { return current; }
 private:
     juce::OwnedArray<juce::TextButton> subTabs;
     juce::OwnedArray<juce::Component> subs;

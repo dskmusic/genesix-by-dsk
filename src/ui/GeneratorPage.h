@@ -68,6 +68,9 @@ public:
     bool isBusy() const { return busy.load(); }
     void presetLoaded();
     std::function<void()> onPresetChanged, openEditor, openExport, openPresets;
+    struct UiState { juce::String category; std::vector<double> sliders; std::vector<bool> locks; };
+    UiState uiState() const;              // kept across a UI rebuild (language switch)
+    void setUiState (const UiState&);
 
 private:
     enum class Job { Generate, Mutate, Blend };

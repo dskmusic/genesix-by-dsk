@@ -28,11 +28,13 @@ public:
     void toast (const juce::String& msg);
     void advanceFrames (double dt);   // used by the screenshot tool
     gx::ui::GeneratorPage& generatorPage() { return *generator; }
+    void rebuildUi();                 // language switch (also exercised by GenesixTool screenshot)
 
 private:
     void timerCallback() override;
     void refreshAll();
     void toggleAB();
+    void buildUi();
 
     struct Root : public juce::Component
     {
@@ -65,5 +67,6 @@ private:
     std::array<gx::Preset, 2> abSlots;
     std::array<bool, 2> abValid { false, false };
     int abActive = 0;
+    bool pendingRebuild = false;
     juce::ComponentBoundsConstrainer constrainer;
 };
