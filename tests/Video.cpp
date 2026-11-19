@@ -12,7 +12,7 @@ namespace
 constexpr int kFps = 30, kW = 1920, kH = 1080, kSub = 8;
 constexpr double kSr = 48000.0;
 constexpr int kSamplesPerFrame = (int) (kSr / kFps), kBlock = kSamplesPerFrame / kSub;
-bool gBilingual = false;                                // "video <dir> bi": English + Spanish captions
+bool gBilingual = false, gDrums = false;              // "video <dir> [bi] [drums]"                                // "video <dir> bi": English + Spanish captions
 constexpr float kUiScale = 1.35f;                       // 1280x800 design -> 1728x1080
 const int kUiX = (kW - (int) (1280 * kUiScale)) / 2;
 
@@ -69,12 +69,19 @@ public:
     }
     void wait (double sec) { for (int i = 0, n = (int) std::lround (sec * kFps); i < n; ++i) frame(); }
 
+    // with the drum loop on, phrases start on the next beat of the global 120 bpm grid
+    static constexpr juce::int64 kBeat = (juce::int64) (kSr / 2), kBar = kBeat * 4;
+    juce::int64 nextBeat() const { return ((sample + kBeat - 1) / kBeat) * kBeat; }
+    void drumsOn() { drumStart = nextBeat(); }
+    void drumsOff() { if (drumStart >= 0) drumEnd = drumStart + ((sample - drumStart + kBar - 1) / kBar) * kBar; }
+
     void play (const std::vector<Note>& ph, double bpm = 120.0, int transpose = 0)
     {
         const double spb = 60.0 / bpm * kSr;
+        const juce::int64 base = gDrums ? nextBeat() : sample;
         for (auto& nt : ph)
         {
-            const auto t0 = sample + (juce::int64) (nt.beat * spb), t1 = sample + (juce::int64) ((nt.beat + nt.len) * spb);
+            const auto t0 = base + (juce::int64) (nt.beat * spb), t1 = base + (juce::int64) ((nt.beat + nt.len) * spb);
             events.insert ({ t0, { nt.note + transpose, true, nt.vel } });
             events.insert ({ t1, { nt.note + transpose, false, 0.0f } });
         }
@@ -215,17 +222,21 @@ public:
             gainDb[h] = gDb;
         }
         auto limit = [] (float x) { const float a = std::abs (x); return a < 0.7f ? x : std::copysign (0.7f + 0.24f * std::tanh ((a - 0.7f) / 0.24f), x); };
+        std::vector<float> DL (L.size(), 0.0f), DR (L.size(), 0.0f);
+        if (gDrums) renderDrums (DL, DR);
+        const float musicGain = gDrums ? 0.82f : 1.0f;
         const size_t fade = (size_t) (kSr * 0.02), fadeEnd = (size_t) (kSr * 1.5);
         juce::AudioBuffer<float> b (2, (int) L.size());
         for (size_t i = 0; i < L.size(); ++i)
         {
             const size_t h = i / hop;
             const float t = (float) (i % hop) / (float) hop;
-            float a = juce::Decibels::decibelsToGain (gainDb[h] + (gainDb[h + 1] - gainDb[h]) * t);
-            if (i < fade) a *= (float) i / (float) fade;
-            if (i + fadeEnd > L.size()) a *= (float) (L.size() - i) / (float) fadeEnd;
-            b.setSample (0, (int) i, limit (L[i] * a));
-            b.setSample (1, (int) i, limit (R[i] * a));
+            const float a = musicGain * juce::Decibels::decibelsToGain (gainDb[h] + (gainDb[h + 1] - gainDb[h]) * t);
+            float fd = 1.0f;
+            if (i < fade) fd *= (float) i / (float) fade;
+            if (i + fadeEnd > L.size()) fd *= (float) (L.size() - i) / (float) fadeEnd;
+            b.setSample (0, (int) i, limit ((L[i] * a + DL[i]) * fd));
+            b.setSample (1, (int) i, limit ((R[i] * a + DR[i]) * fd));
         }
         auto f = out.getChildFile ("audio.wav");
         f.deleteFile();
@@ -237,6 +248,85 @@ public:
     }
 
 private:
+    // ---------------------------------------------------------------- drum loop (synthesised, 120 bpm)
+    struct Biquad
+    {
+        float b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0, x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+        static Biquad make (bool highPass, double f, double q)
+        {
+            const double w = juce::MathConstants<double>::twoPi * f / kSr, c = std::cos (w), al = std::sin (w) / (2 * q), a0 = 1 + al;
+            Biquad z;
+            if (highPass) { z.b0 = (float) ((1 + c) / 2 / a0); z.b1 = (float) (-(1 + c) / a0); z.b2 = z.b0; }
+            else          { z.b0 = (float) (al / a0); z.b1 = 0; z.b2 = (float) (-al / a0); }
+            z.a1 = (float) (-2 * c / a0); z.a2 = (float) ((1 - al) / a0);
+            return z;
+        }
+        float operator() (float x) { const float y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; return y; }
+    };
+
+    void renderDrums (std::vector<float>& DL, std::vector<float>& DR)
+    {
+        if (drumStart < 0) return;
+        if (drumEnd < 0) drumEnd = (juce::int64) L.size();
+        juce::Random rnd (2026);
+        auto noise = [&] { return rnd.nextFloat() * 2.0f - 1.0f; };
+        auto add = [&] (juce::int64 at, const std::vector<float>& v, float gl, float gr)
+        {
+            for (size_t i = 0; i < v.size() && at + (juce::int64) i < (juce::int64) DL.size(); ++i)
+            { DL[(size_t) at + i] += v[i] * gl; DR[(size_t) at + i] += v[i] * gr; }
+        };
+        auto kick = [&]
+        {
+            std::vector<float> v ((size_t) (kSr * 0.45));
+            double ph = 0;
+            for (size_t i = 0; i < v.size(); ++i)
+            {
+                const double t = (double) i / kSr, f = 48.0 + 110.0 * std::exp (-t * 28.0);
+                ph += juce::MathConstants<double>::twoPi * f / kSr;
+                const float s = (float) (std::sin (ph) * std::exp (-t * 7.5)) + 0.25f * noise() * (float) std::exp (-t * 400.0);
+                v[i] = std::tanh (1.6f * s) * 0.95f;
+            }
+            return v;
+        };
+        auto clap = [&]
+        {
+            std::vector<float> v ((size_t) (kSr * 0.3));
+            auto bp = Biquad::make (false, 1300.0, 0.9);
+            for (size_t i = 0; i < v.size(); ++i)
+            {
+                const double t = (double) i / kSr;
+                const double env = t < 0.03 ? std::exp (-std::fmod (t, 0.01) * 250.0) : std::exp (-(t - 0.03) * 16.0);
+                v[i] = bp (noise()) * (float) env * 2.4f;
+            }
+            return v;
+        };
+        auto hat = [&] (bool open)
+        {
+            std::vector<float> v ((size_t) (kSr * (open ? 0.3 : 0.06)));
+            auto hp = Biquad::make (true, open ? 7000.0 : 7500.0, 0.7);
+            for (size_t i = 0; i < v.size(); ++i)
+                v[i] = hp (noise()) * (float) std::exp (-(double) i / kSr * (open ? 11.0 : 70.0)) * (open ? 0.25f : 0.35f);
+            return v;
+        };
+        const juce::int64 step = kBeat / 4;
+        for (juce::int64 t = drumStart, k = 0; t <= drumEnd; t += step, ++k)
+        {
+            const int s = (int) (k % 16);
+            if (t == drumEnd) { add (t, kick(), 1, 1); add (t, hat (true), 0.8f, 1.0f); break; }   // final downbeat
+            if (s % 4 == 0) add (t, kick(), 1, 1);
+            if (s == 4 || s == 12) add (t, clap(), 0.95f, 0.95f);
+            if (s % 4 == 2) add (t, hat (true), 0.75f, 1.0f);
+            else add (t, hat (false), (s % 2) ? 1.0f : 0.8f, (s % 2) ? 0.7f : 1.0f);
+        }
+        // drum bus to ~-21 dBFS RMS over its active part
+        double e = 0; size_t n = 0;
+        for (auto i = (size_t) drumStart; i < (size_t) juce::jmin ((juce::int64) DL.size(), drumEnd); ++i, ++n) e += 0.5 * (DL[i] * DL[i] + DR[i] * DR[i]);
+        const float g = n > 0 ? juce::Decibels::decibelsToGain (-21.0f) / (float) std::sqrt (e / (double) n + 1e-12) : 1.0f;
+        for (size_t i = 0; i < DL.size(); ++i) { DL[i] *= g; DR[i] *= g; }
+    }
+
+    juce::int64 drumStart = -1, drumEnd = -1;
+
     void writeFrame()
     {
         juce::Image img (juce::Image::RGB, kW, kH, true);
@@ -424,7 +514,7 @@ int runVideo (int argc, char** argv)
 {
     const juce::File dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "video");
     dir.createDirectory();
-    gBilingual = argc > 3 && juce::String (argv[3]) == "bi";
+    for (int a = 3; a < argc; ++a) { const juce::String o (argv[a]); gBilingual |= o == "bi"; gDrums |= o == "drums"; }
     Director d (dir);
     auto& gp = d.ed->generatorPage();
 
@@ -443,6 +533,7 @@ int runVideo (int argc, char** argv)
     d.click (d.button ("Bass", &gp));
     d.drag (d.genSlider (2), 0.7);                  // aggression
     d.generate();
+    d.drumsOn();
     d.play (bassRiff);
     d.wait (4.2);
 
@@ -521,6 +612,7 @@ int runVideo (int argc, char** argv)
     d.clearCaption();
     d.play (pluckLine());
     d.wait (4.6);
+    d.drumsOff();
     d.card (true, 0.8, 3.6, 0.0);
 
     d.finishAudio();
