@@ -4,6 +4,8 @@
 #include "ui/GeneratorPage.h"
 
 int runVideo (int argc, char** argv); // Video.cpp
+int runBankReport (int argc, char** argv); // Sound.cpp
+int runListenPack (int argc, char** argv); // Sound.cpp
 
 int main (int argc, char** argv)
 {
@@ -11,6 +13,8 @@ int main (int argc, char** argv)
     const juce::String cmd = argc > 1 ? argv[1] : "test";
     if (cmd == "test") return gxtest::runAll();
     if (cmd == "video") return runVideo (argc, argv);
+    if (cmd == "bank-report") return runBankReport (argc, argv);
+    if (cmd == "listen-pack") return runListenPack (argc, argv);
     if (cmd == "bench")
     {
         // worst-ish case: 16 voices x 8 unison x 4 oscillators of mixed types, both filters, all FX

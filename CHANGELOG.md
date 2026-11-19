@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 ### Added
+- Generator v2 (sound design): every request now builds several valid candidates and keeps the most interesting one (category-aware score for movement, evolution, stereo width and richness; chaos and noise are penalised).
+- Layering with roles (air layer an octave up, clean sub weight, spectral-mutation motion layer), Genesix signature features where they shine (Shimmer, Granular Smear, formant and comb colour), stereo tremolo/phaser on keys, slow "bloom" envelope and drift LFO on big sustained sounds.
+- Musically meaningful macros (Brightness, Timbre, Space, Character with several targets each) and a mod-wheel "open up" morph on every tonal sound; Weirdness now adds controlled originality (harmonic FM colour, key-tracked timbre, velocity formants).
+- 7 new archetypes: Bass Growl, Lead Anthem, Lead Vocal, Pad Cinematic, Strings Hybrid, Brass Trailer, Ambient Cathedral.
+- `GenesixTool bank-report` (structural + audio analysis of a preset bank) and `GenesixTool listen-pack` (fixed loudness-matched A/B listening pack).
 - `GenesixTool video <dir>`: scripted 1080p30 product demo rendered from the real editor and engine (frames + audio, mux with ffmpeg).
 ### Fixed
 - Factory preset notes were shown in Spanish with the English interface: they are now stored in English and shown in Spanish only when the interface is Spanish.

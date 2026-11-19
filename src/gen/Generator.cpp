@@ -2,6 +2,8 @@
 #include "../preset/Render.h"
 #include <juce_dsp/juce_dsp.h>
 #include <map>
+#include <array>
+#include <algorithm>
 
 namespace gx
 {
@@ -70,6 +72,46 @@ struct B
         return false;
     }
     void fxOn (const char* onId) { set (onId, 1); }
+
+    // ---- v1.1 sound-design helpers
+    bool on (const juce::String& id) const { return get (id.toRawUTF8()) > 0.5f; }
+    int freeOsc() const { for (int i = 2; i <= 4; ++i) if (! on (o (i, "on"))) return i; return 0; }
+    int oscCount() const { int n = 0; for (int i = 1; i <= 4; ++i) n += on (o (i, "on")); return n; }
+    bool hasMod (const char* src, const juce::String& dst) const
+    {
+        const int s = sourceIds().indexOf (src), d = destIndex (dst);
+        for (int k = 0; k < kNumModSlots; ++k)
+            if ((int) p.params[(size_t) P::mod (k, P::mSrc)] == s && (int) p.params[(size_t) P::mod (k, P::mDst)] == d) return true;
+        return false;
+    }
+    // adds a route only if the destination exists and it is not already there (never asserts)
+    bool modIf (const char* src, const juce::String& dst, float amt)
+    {
+        if (destIndex (dst) <= 0 || sourceIds().indexOf (src) <= 0 || hasMod (src, dst)) return false;
+        return mod (src, dst, amt);
+    }
+    int freeLfo() const
+    {
+        for (int i = 1; i <= kNumLfo; ++i)
+        {
+            const int s = sourceIds().indexOf ("lfo" + juce::String (i));
+            bool used = false;
+            for (int k = 0; k < kNumModSlots; ++k) used |= (int) p.params[(size_t) P::mod (k, P::mSrc)] == s;
+            if (! used) return i;
+        }
+        return 0;
+    }
+    bool envUsed (int i) const
+    {
+        const int s = sourceIds().indexOf ("env" + juce::String (i));
+        for (int k = 0; k < kNumModSlots; ++k) if ((int) p.params[(size_t) P::mod (k, P::mSrc)] == s) return true;
+        return false;
+    }
+    void formant2 (float vowel, float balance)   // parallel formant filter (vocal colour)
+    {
+        set ("filter2_on", 1); set ("filter2_type", (float) ftFormant); set ("filter2_cutoff", vowel); set ("filter2_reso", rr (0.3f, 0.45f));
+        set ("filter_routing", 1); set ("filter_balance", balance);
+    }
 };
 
 // Division indices (see divisionNames)
@@ -136,6 +178,19 @@ void bass (B& b)
         b.filter (1, ftLp12, b.scaleLog (700, 4000, q.brightness), 0.1f, 0.0f, 0.3f);
         b.env (3, 0.001f, b.rr (0.08f, 0.3f), 0.0f, 0.1f);
         b.mod ("env3", "osc1_fm_i2", b.rr (0.2f, 0.4f));
+    }
+    else if (sub == "Growl")
+    {
+        // talking, vowel-like mid bass: grit wavetable + formant moving in time + clean sub
+        b.set ("play_mode", (float) pmLegato); b.set ("glide", b.rr (0.03f, 0.08f)); b.set ("glide_legato", 1);
+        b.wt (1, b.pickOf ({ (int) tGrit, (int) tFold, (int) tTanh, (int) tVowel }), b.rr (0.3f, 0.6f), 0.7f);
+        b.analog (2, 0.0f, 0.5f, -1);
+        b.filter (1, ftLp24, b.scaleLog (500, 2200, q.brightness), b.rr (0.2f, 0.4f), 0.0f, 0.3f, b.rr (0.2f, 0.4f));
+        b.formant2 (b.rr (200, 500), b.rr (0.45f, 0.65f));
+        b.lfo (1, b.pickOf ({ (int) lsSine, (int) lsTri, (int) lsSmoothRandom }), 2, true, 0, b.pickOf ({ (int) d8, (int) d4, (int) d8T, (int) d4D }));
+        b.mod ("lfo1", "filter2_cutoff", b.rr (0.25f, 0.45f));
+        b.mod ("lfo1", "osc1_morph", b.rr (0.2f, 0.4f));
+        b.fxOn ("dist_on"); b.set ("dist_type", (float) b.pickOf ({ 0, 2, 3 })); b.set ("dist_drive", b.scaleLin (0.2f, 0.6f, q.aggression)); b.set ("dist_mix", b.rr (0.5f, 0.9f));
     }
     else if (sub == "Pluck")
     {
@@ -206,6 +261,31 @@ void lead (B& b)
         b.filter (1, ftLp24, b.scaleLog (2000, 9000, q.brightness), b.rr (0.1f, 0.3f), b.rr (0.1f, 0.3f), 0.4f);
         b.env (2, 0.002f, b.rr (0.2f, 0.6f), 0.4f, 0.3f);
     }
+    else if (sub == "Anthem")
+    {
+        // stadium lead: wide supersaw + octave layer + body, opens with the mod wheel
+        b.set ("play_mode", (float) pmPoly); b.set ("glide", 0.0f);
+        b.analog (1, 0.66f, 0.65f);
+        b.set ("uni_voices", (float) b.pickOf ({ 6, 7, 8 })); b.set ("uni_detune", b.rr (0.25f, 0.36f)); b.set ("uni_spread", b.rr (0.85f, 1.0f)); b.set ("uni_blend", b.rr (0.65f, 0.85f));
+        b.analog (2, 0.66f, b.rr (0.25f, 0.35f), 1);
+        b.wt (3, b.pickOf ({ (int) tHarm, (int) tBrass, (int) tTilt }), b.rr (0.4f, 0.8f), b.rr (0.25f, 0.35f), -1);
+        b.filter (1, ftLp12, b.scaleLog (3000, 11000, q.brightness), 0.12f, 0.15f, 0.35f);
+        b.env (2, 0.005f, b.rr (0.4f, 1.0f), 0.6f, 0.4f);
+        b.fxOn ("reverb_on"); b.set ("reverb_size", b.rr (0.7f, 0.9f)); b.set ("reverb_mix", b.scaleLin (0.15f, 0.3f, q.space));
+        b.fxOn ("wide_on"); b.set ("wide_width", b.rr (1.2f, 1.5f));
+    }
+    else if (sub == "Vocal")
+    {
+        // talking lead: vowel table swept slowly + parallel formant, expressive glide
+        b.set ("play_mode", (float) pmLegato); b.set ("glide", b.rr (0.04f, 0.1f));
+        b.wt (1, b.pickOf ({ (int) tVowel, (int) tChoir }), b.rr (0.2f, 0.8f), 0.7f);
+        b.analog (2, 0.66f, 0.3f); b.set ("osc2_fine", b.rr (4, 9));
+        b.filter (1, ftLp24, b.scaleLog (2500, 9000, q.brightness), 0.12f, 0.1f, 0.4f);
+        b.formant2 (b.rr (250, 700), b.rr (0.35f, 0.5f));
+        b.lfo (1, lsSmoothRandom, b.rr (0.3f, 1.2f), false);
+        b.mod ("lfo1", "osc1_morph", b.rr (0.25f, 0.45f));
+        b.mod ("lfo1", "filter2_cutoff", b.rr (0.15f, 0.3f));
+    }
     else // Mono
     {
         b.analog (1, 0.66f, 0.7f);
@@ -260,6 +340,18 @@ void pad (B& b)
         static const uint16_t pats[] { 0b1011011010110110, 0b1110111011101110, 0b1010101011011010, 0b1101101101101101, 0b1001101010011010, 0b1111011101110111 };
         const uint16_t pat = pats[b.pick (6)];
         for (int i = 0; i < kMaxGateSteps; ++i) b.p.patterns.gate[(size_t) i] = ((pat >> (15 - (i % 16))) & 1) ? (b.chance (0.25f) ? 0.7f : 1.0f) : 0.0f;
+    }
+    else if (sub == "Cinematic")
+    {
+        // trailer-style swell: choir/glass table + detuned saw + evolving mutation layer, slow bloom
+        b.set ("env1_attack", b.rr (0.8f, 2.5f));
+        b.wt (1, b.pickOf ({ (int) tChoir, (int) tHarm, (int) tGlass, (int) tVowel }), b.rr (0.2f, 0.7f), 0.55f);
+        b.analog (2, 0.66f, 0.4f); b.set ("osc2_fine", b.rr (6, 12));
+        b.osc (3, otMutation, 0.3f); b.set ("osc3_mut_rate", b.scaleLin (0.15f, 0.5f, q.movement)); b.set ("osc3_morph", b.rr (0.2f, 0.8f)); b.set ("osc3_oct", 1);
+        b.filter (1, ftLp24, b.scaleLog (800, 4500, q.brightness), b.rr (0.1f, 0.25f), 0.0f, 0.25f);
+        b.lfo (1, lsSmoothRandom, b.rr (0.04f, 0.12f), false);
+        b.mod ("lfo1", "osc1_morph", b.scaleLin (0.2f, 0.45f, q.movement));
+        b.fxOn ("shimmer_on"); b.set ("shimmer_mix", b.scaleLin (0.12f, 0.3f, q.space)); b.set ("shimmer_amount", b.rr (0.35f, 0.6f));
     }
     else if (sub == "Dark")
     {
@@ -454,6 +546,22 @@ void strings (B& b)
         b.set ("filter_routing", 1); b.set ("filter_balance", 0.35f);
         b.env (1, b.rr (0.06f, 0.2f), 1.0f, 0.9f, b.rr (0.3f, 0.7f));
     }
+    else if (sub == "Hybrid")
+    {
+        // orchestral section + pulsing synth layer (rhythmic ostinato feel through the trance gate)
+        b.analog (1, 0.66f, 0.6f);
+        b.wt (2, b.pickOf ({ (int) tPwm, (int) tHarm, (int) tBrass }), b.rr (0.3f, 0.7f), 0.4f);
+        b.analog (3, 0.0f, 0.3f, -1);
+        b.set ("uni_voices", (float) (4 + b.pick (3))); b.set ("uni_detune", b.rr (0.12f, 0.22f)); b.set ("uni_spread", b.rr (0.8f, 1.0f));
+        b.filter (1, ftLp24, b.scaleLog (1800, 6500, q.brightness), b.rr (0.1f, 0.25f), 0.15f, 0.3f);
+        b.env (1, b.rr (0.05f, 0.2f), 1.2f, 0.85f, b.rr (0.5f, 1.2f), -0.2f);
+        b.set ("tg_on", 1); b.set ("tg_rate", (float) b.pickOf ({ (int) d16, (int) d8 })); b.set ("tg_depth", b.rr (0.35f, 0.6f));
+        b.set ("tg_steps", 16); b.set ("tg_attack", b.rr (2, 6)); b.set ("tg_release", b.rr (20, 60));
+        static const uint16_t pats[] { 0b1011101110111011, 0b1110111011101110, 0b1011011010110110, 0b1111111011111110 };
+        const uint16_t pat = pats[b.pick (4)];
+        for (int i = 0; i < kMaxGateSteps; ++i) b.p.patterns.gate[(size_t) i] = ((pat >> (15 - (i % 16))) & 1) ? 1.0f : 0.25f;
+        b.fxOn ("chorus_on"); b.set ("chorus_mix", b.rr (0.2f, 0.35f));
+    }
     else
     {
         b.analog (1, 0.66f, 0.6f);
@@ -487,6 +595,18 @@ void brass (B& b)
         b.env (1, b.rr (0.02f, 0.06f), 0.8f, 0.85f, b.rr (0.15f, 0.35f));
     }
     if (sub == "Horn") { b.set ("filter2_on", 1); b.set ("filter2_type", (float) ftFormant); b.set ("filter2_cutoff", b.rr (100, 300)); b.set ("filter2_reso", 0.35f); b.set ("filter_routing", 1); b.set ("filter_balance", 0.3f); }
+    if (sub == "Trailer")
+    {
+        // huge low brass: saws an octave apart, slow "blat" swell, drive and a big hall
+        b.analog (3, 0.66f, 0.45f, -1); b.set ("osc3_fine", b.rr (-6, 6));
+        b.set ("uni_voices", (float) (3 + b.pick (3))); b.set ("uni_detune", b.rr (0.12f, 0.2f)); b.set ("uni_spread", b.rr (0.5f, 0.8f));
+        b.set ("filter1_cutoff", b.scaleLog (350, 1100, q.brightness)); b.set ("filter1_env", b.rr (0.5f, 0.7f));
+        b.env (2, b.rr (0.12f, 0.35f), b.rr (0.8f, 1.6f), b.rr (0.4f, 0.6f), 0.5f, 0.3f);
+        b.env (1, b.rr (0.05f, 0.15f), 1.0f, 0.9f, b.rr (0.4f, 0.8f));
+        b.formant2 (b.rr (120, 260), b.rr (0.2f, 0.3f));
+        b.fxOn ("dist_on"); b.set ("dist_type", 0.0f); b.set ("dist_drive", b.scaleLin (0.1f, 0.35f, q.aggression)); b.set ("dist_mix", b.rr (0.3f, 0.6f));
+        b.set ("reverb_size", b.rr (0.8f, 0.95f));
+    }
     b.mod ("velocity", "filter1_cutoff", b.rr (0.1f, 0.2f));
     b.fxOn ("reverb_on"); b.set ("reverb_mix", b.scaleLin (0.1f, 0.3f, q.space));
 }
@@ -623,6 +743,17 @@ void ambient (B& b)
         b.mod ("lfo1", "osc2_morph", 0.3f);
         b.fxOn ("granular_on"); b.set ("granular_mix", b.rr (0.25f, 0.5f)); b.set ("granular_spread", b.rr (0.4f, 0.9f));
     }
+    else if (sub == "Cathedral")
+    {
+        // sacred space: organ/choir tables, mutation shimmer layer, endless shimmer reverb
+        b.wt (1, b.pickOf ({ (int) tOrgan, (int) tChoir, (int) tHarm }), b.rr (0.2f, 0.8f), 0.55f);
+        b.wt (2, b.pickOf ({ (int) tChoir, (int) tGlass }), b.rr (0, 1), 0.35f, 1);
+        b.osc (3, otMutation, 0.25f); b.set ("osc3_mut_rate", b.rr (0.1f, 0.3f)); b.set ("osc3_morph", b.rr (0, 1));
+        b.filter (1, ftLp12, b.scaleLog (2000, 8000, q.brightness), 0.1f);
+        b.lfo (1, lsSmoothRandom, b.rr (0.03f, 0.08f), false);
+        b.mod ("lfo1", "osc2_morph", b.rr (0.25f, 0.45f));
+        b.set ("uni_voices", 3); b.set ("uni_detune", b.rr (0.08f, 0.15f)); b.set ("uni_spread", 1.0f);
+    }
     else // Soundscape
     {
         b.wt (1, b.pickOf ({ (int) tChoir, (int) tVowel, (int) tGlass, (int) tHarm }), b.rr (0, 1), 0.6f);
@@ -635,6 +766,108 @@ void ambient (B& b)
     b.fxOn ("reverb_on"); b.set ("reverb_size", b.rr (0.85f, 1.0f)); b.set ("reverb_mix", b.scaleLin (0.3f, 0.55f, q.space));
     if (q.space > 0.4f) { b.fxOn ("shimmer_on"); b.set ("shimmer_mix", b.scaleLin (0.1f, 0.35f, q.space)); }
     b.fxOn ("delay_on"); b.set ("delay_div", (float) b.pickOf ({ (int) d2, (int) d4D })); b.set ("delay_mix", b.rr (0.1f, 0.2f)); b.set ("delay_fb", b.rr (0.4f, 0.6f));
+}
+
+// ---- v1.1: layering with a role per oscillator --------------------------------------------
+thread_local int gAirOsc = 0; // osc slot used as "air" layer in the current candidate (for macro 1)
+
+void addLayers (B& b, const juce::String& cat)
+{
+    const auto& q = b.q;
+    const auto sub = b.sub;
+    gAirOsc = 0;
+    if (cat == "Drums/Perc" || cat == "FX") return;
+    const bool sustainedCat = cat == "Pad" || cat == "Strings" || cat == "Ambient" || cat == "Brass" || cat == "Lead";
+    // AIR: a quiet, bright layer an octave up gives size and sheen
+    if ((sustainedCat || (cat == "Keys" && (sub == "Digital" || sub == "Bell")) || (cat == "Pluck" && sub == "Bell"))
+        && cat != "Bass" && b.chance (cat == "Lead" ? 0.4f : 0.65f))
+        if (const int i = b.freeOsc())
+        {
+            b.wt (i, b.pickOf ({ (int) tGlass, (int) tHarm, (int) tChoir, (int) tBell }), b.rr (0.4f, 1.0f), b.rr (0.1f, 0.18f) * (0.6f + q.brightness * 0.6f), 1);
+            b.set (b.o (i, "fine"), b.rr (-7, 7));
+            b.set (b.o (i, "pan"), b.rr (-0.35f, 0.35f));
+            gAirOsc = i;
+        }
+    // WEIGHT: a clean sine sub under basses and big sustained sounds (keeps the low end solid)
+    bool hasLow = false;
+    for (int i = 1; i <= 4; ++i) hasLow |= b.on (b.o (i, "on")) && b.get (b.o (i, "oct").toRawUTF8()) < -0.5f;
+    if (! hasLow && (cat == "Bass" ? b.chance (0.6f) : (sub == "Cinematic" || sub == "Trailer" || sub == "Hybrid" || (cat == "Pad" && b.chance (0.25f)))))
+        if (const int i = b.freeOsc())
+            b.analog (i, 0.0f, cat == "Bass" ? b.rr (0.35f, 0.5f) : b.rr (0.15f, 0.25f), -1);
+    // MOTION: a low-level spectral-mutation layer that keeps the timbre alive
+    if ((cat == "Pad" || cat == "Ambient" || cat == "Strings" || (cat == "Keys" && sub == "Digital") || (cat == "Lead" && sub == "Soft"))
+        && b.chance (0.3f + 0.4f * q.movement))
+        if (const int i = b.freeOsc())
+        {
+            b.osc (i, otMutation, b.rr (0.15f, 0.28f));
+            b.set (b.o (i, "mut_rate"), b.scaleLin (0.1f, 0.5f, q.movement));
+            b.set (b.o (i, "morph"), b.rr (0.1f, 0.9f));
+            b.set (b.o (i, "shape"), b.rr (0.2f, 0.5f));
+        }
+}
+
+// ---- v1.1: Genesix signature features where they shine ---------------------------------------
+void signature (B& b, const juce::String& cat)
+{
+    const auto& q = b.q;
+    const auto sub = b.sub;
+    // Shimmer on big sustained sounds
+    if ((cat == "Pad" || cat == "Ambient" || cat == "Strings" || (cat == "Keys" && sub == "Bell") || (cat == "Pluck" && sub == "Bell"))
+        && ! b.on ("shimmer_on") && q.space > 0.3f && b.chance (0.5f))
+    { b.fxOn ("shimmer_on"); b.set ("shimmer_mix", b.scaleLin (0.08f, 0.25f, q.space)); b.set ("shimmer_amount", b.rr (0.3f, 0.6f)); }
+    // Granular Smear on textures and evolving sounds
+    if ((cat == "Ambient" || cat == "FX" || sub == "Evolving" || sub == "Cinematic" || (cat == "Arp" && sub == "Evolving"))
+        && ! b.on ("granular_on") && b.chance (0.3f + 0.3f * q.movement))
+    { b.fxOn ("granular_on"); b.set ("granular_mix", b.rr (0.1f, 0.28f)); b.set ("granular_spread", b.rr (0.4f, 0.9f)); }
+    // Formant colour on vocal-ish sounds (only if filter 2 is free)
+    if (! b.on ("filter2_on") && ((cat == "Lead" && (sub == "Mono" || sub == "Soft")) || sub == "Choir" || (cat == "Strings" && sub == "Ensemble") || (cat == "Pad" && sub == "Warm"))
+        && b.chance (0.35f))
+        b.formant2 (b.rr (250, 800), b.rr (0.2f, 0.35f));
+    // Comb resonance on bells and mallets (metallic body)
+    if (! b.on ("filter2_on") && cat == "Pluck" && (sub == "Bell" || sub == "Mallet") && b.chance (0.35f))
+    {
+        b.set ("filter2_on", 1); b.set ("filter2_type", (float) ftCombPos); b.set ("filter2_cutoff", b.rr (300, 1200));
+        b.set ("filter2_reso", b.rr (0.4f, 0.65f)); b.set ("filter2_key", 1.0f); b.set ("filter_routing", 1); b.set ("filter_balance", b.rr (0.15f, 0.3f));
+    }
+    // Classic keys motion: stereo tremolo (electric piano / clav) or a slow phaser (organ)
+    if (cat == "Keys" && (sub == "Electric" || sub == "Clav" || sub == "Organ") && b.chance (0.75f))
+        if (const int l = b.freeLfo())
+        {
+            const auto src = ("lfo" + juce::String (l)).toStdString();
+            if (sub == "Organ") { b.lfo (l, lsSine, b.rr (0.5f, 1.2f), false); b.fxOn ("phaser_on"); b.set ("phaser_mix", b.rr (0.2f, 0.35f)); b.modIf (src.c_str(), "phaser_mix", 0.15f); }
+            else { b.lfo (l, lsSine, b.rr (3.5f, 6.0f), false); b.modIf (src.c_str(), "osc1_pan", b.rr (0.35f, 0.6f)); if (b.on ("osc2_on")) b.modIf (src.c_str(), "osc2_pan", -b.rr (0.35f, 0.6f)); }
+        }
+    // Width for the narrow families (leads, keys, plucks); basses stay mono-compatible
+    if ((cat == "Lead" || cat == "Keys" || cat == "Pluck" || cat == "Arp") && ! b.on ("wide_on") && ! b.on ("chorus_on") && b.chance (0.55f))
+    {
+        if (b.chance (0.5f)) { b.fxOn ("chorus_on"); b.set ("chorus_mix", b.rr (0.18f, 0.32f)); }
+        else { b.fxOn ("wide_on"); b.set ("wide_width", b.rr (1.15f, 1.45f)); b.set ("wide_bass", b.rr (150, 250)); }
+    }
+}
+
+// ---- v1.1: long-form motion ("epic" bloom) - uses free envelopes/LFOs and slots only ----------
+void epicMotion (B& b, const juce::String& cat)
+{
+    const auto& q = b.q;
+    const auto sub = b.sub;
+    const bool big = cat == "Pad" || cat == "Ambient" || cat == "Strings" || cat == "Brass" || (cat == "Lead" && (sub == "Anthem" || sub == "Supersaw"));
+    if (! big || cat == "Drums/Perc") return;
+    // slow bloom: env 4 opens filter and timbre over several seconds
+    const float bloomChance = cat == "Pad" || cat == "Ambient" || sub == "Cinematic" || sub == "Trailer" ? 0.75f : 0.45f;
+    if (! b.envUsed (4) && b.chance (bloomChance))
+    {
+        b.env (4, b.scaleLin (1.5f, 7.0f, q.movement), 2.0f, 1.0f, 3.0f, -0.4f);
+        b.modIf ("env4", "filter1_cutoff", b.rr (0.12f, 0.25f));
+        b.modIf ("env4", "osc1_morph", b.rr (0.08f, 0.18f));
+    }
+    // very slow drift: an LFO wandering over the timbre (seconds to tens of seconds per cycle)
+    if (const int l = b.freeLfo(); l > 0 && b.chance (0.6f))
+    {
+        b.lfo (l, lsSmoothRandom, b.rr (0.03f, 0.12f), false);
+        const auto src = ("lfo" + juce::String (l)).toStdString();
+        b.modIf (src.c_str(), b.on ("osc2_on") ? "osc2_morph" : "osc1_morph", b.rr (0.1f, 0.25f));
+        if (b.on ("filter2_on")) b.modIf (src.c_str(), "filter2_cutoff", b.rr (0.08f, 0.18f));
+    }
 }
 
 // ---- cross-category modifiers -----------------------------------------------------------
@@ -665,15 +898,24 @@ void applyCharacter (B& b, const juce::String& cat)
         b.mod ("stepseq", b.chance (0.6f) ? "filter1_cutoff" : "osc1_morph", b.scaleLin (0.12f, 0.3f, q.movement));
         if (b.get ("filter1_on") < 0.5f) b.filter (1, ftLp12, 6000, 0.15f);
     }
-    // Weirdness: unusual sources and FX, never randomness for its own sake
-    if (q.weirdness > 0.45f && tonal)
+    // Weirdness (v1.1): controlled originality - musical surprises, never noise for its own sake
+    if (q.weirdness > 0.4f && tonal)
     {
-        const int w = b.pick (4);
-        if (w == 0 && b.get ("osc3_on") < 0.5f) { b.osc (3, otMutation, b.scaleLin (0.2f, 0.45f, q.weirdness)); b.set ("osc3_mut_rate", b.rr (0.3f, 0.8f)); b.set ("osc3_shape", q.weirdness); }
-        if (w == 1) { b.fxOn ("granular_on"); b.set ("granular_mix", b.scaleLin (0.1f, 0.35f, q.weirdness)); b.set ("granular_pitch", b.rr (0.0f, 0.3f)); }
-        if (w == 2) { b.fxOn ("crush_on"); b.set ("crush_bits", b.rr (6, 11)); b.set ("crush_rate", b.rr (1, 4)); b.set ("crush_mix", b.rr (0.2f, 0.5f)); }
-        if (w == 3) { b.set ("osc1_fold", b.scaleLin (0.1f, 0.4f, q.weirdness)); }
-        if (q.weirdness > 0.75f) b.mod ("random", "osc1_morph", b.rr (0.1f, 0.3f));
+        const int w = b.pick (6);
+        if (w == 0) { if (const int i = b.freeOsc()) { b.osc (i, otMutation, b.scaleLin (0.2f, 0.4f, q.weirdness)); b.set (b.o (i, "mut_rate"), b.rr (0.3f, 0.8f)); b.set (b.o (i, "shape"), q.weirdness); } }
+        if (w == 1) { b.fxOn ("granular_on"); b.set ("granular_mix", b.scaleLin (0.1f, 0.3f, q.weirdness)); b.set ("granular_pitch", b.rr (0.0f, 0.3f)); }
+        if (w == 2) // harmonic-but-unusual FM colour layer (fifths, octave-and-fifth)
+            if (const int i = b.freeOsc())
+            {
+                b.osc (i, otFM, b.rr (0.15f, 0.3f));
+                b.set (b.o (i, "fm_algo"), (float) b.pickOf ({ 0, 1, 4 }));
+                b.set (b.o (i, "fm_r2"), b.pickOf ({ 1.5f, 3.0f, 0.5f, 2.0f })); b.set (b.o (i, "fm_i2"), b.scaleLin (0.2f, 0.5f, q.weirdness));
+            }
+        if (w == 3) { b.set ("osc1_fold", b.scaleLin (0.1f, 0.35f, q.weirdness)); }
+        if (w == 4) b.modIf ("key", "osc1_morph", b.rr (0.2f, 0.45f));                    // timbre changes across the keyboard
+        if (w == 5 && ! b.on ("filter2_on")) { b.formant2 (b.rr (250, 800), b.rr (0.25f, 0.4f)); b.modIf ("velocity", "filter2_cutoff", b.rr (0.2f, 0.4f)); }
+        if (q.weirdness > 0.85f && b.chance (0.5f)) { b.fxOn ("crush_on"); b.set ("crush_bits", b.rr (8, 12)); b.set ("crush_rate", b.rr (1, 3)); b.set ("crush_mix", b.rr (0.15f, 0.35f)); }
+        if (q.weirdness > 0.75f) b.modIf ("random", "osc1_morph", b.rr (0.1f, 0.25f));
     }
     // Aggression: harmonics & dynamics
     if (q.aggression > 0.7f && b.get ("dist_on") < 0.5f && tonal && cat != "Pad" && cat != "Ambient")
@@ -681,11 +923,27 @@ void applyCharacter (B& b, const juce::String& cat)
     // Space: always at least a touch of air for melodic sounds
     if (q.space > 0.6f && b.get ("reverb_on") < 0.5f && cat != "Bass") { b.fxOn ("reverb_on"); b.set ("reverb_mix", b.scaleLin (0.1f, 0.3f, q.space)); }
     if (q.space > 0.7f && cat != "Bass" && cat != "Drums/Perc") { b.fxOn ("wide_on"); b.set ("wide_width", b.rr (1.2f, 1.6f)); }
-    // Macros: musically useful defaults (brightness, motion, space, character)
+    // Macros (v1.1): each one changes something musically clear
+    // 1 Brightness: filter + air layer
     b.mod ("macro1", "filter1_cutoff", 0.35f);
+    if (gAirOsc) b.modIf ("macro1", b.o (gAirOsc, "level"), 0.3f);
+    // 2 Timbre: main and second oscillator shape
     b.mod ("macro2", "osc1_morph", 0.3f);
-    if (b.get ("reverb_on") > 0.5f) b.mod ("macro3", "reverb_mix", 0.3f);
+    if (b.on ("osc2_on") && b.get ("osc2_type") != (float) otNoise) b.modIf ("macro2", "osc2_morph", 0.25f);
+    // 3 Space: reverb, delay, shimmer together
+    if (b.on ("reverb_on")) b.modIf ("macro3", "reverb_mix", 0.3f);
+    if (b.on ("delay_on")) b.modIf ("macro3", "delay_mix", 0.2f);
+    if (b.on ("shimmer_on")) b.modIf ("macro3", "shimmer_mix", 0.2f);
+    // 4 Character: resonance plus drive (or wavefold when there is no distortion)
     b.mod ("macro4", "filter1_reso", 0.3f);
+    if (b.on ("dist_on")) b.modIf ("macro4", "dist_drive", 0.3f); else if (tonal) b.modIf ("macro4", "osc1_fold", 0.25f);
+    // Mod wheel: a big, playable "open up" morph on every tonal sound
+    if (tonal)
+    {
+        b.modIf ("modwheel", "filter1_cutoff", b.rr (0.2f, 0.35f));
+        b.modIf ("modwheel", "osc1_morph", b.rr (0.12f, 0.25f));
+        if (b.on ("reverb_on")) b.modIf ("modwheel", "reverb_mix", b.rr (0.1f, 0.2f));
+    }
 }
 
 void fxOrder (B& b)
@@ -755,7 +1013,10 @@ Preset Generator::candidate (const GenRequest& req, uint32_t seed)
     else if (c == "Drums/Perc") drums (b);
     else ambient (b);
     if (b.get ("osc1_on") < 0.5f && b.get ("osc2_on") < 0.5f) b.analog (1, 0.66f, 0.7f); // safety
-    applyCharacter (b, c);
+    addLayers (b, c);          // v1.1: air / weight / motion layers
+    signature (b, c);          // v1.1: shimmer, granular, formant, comb, width where they shine
+    applyCharacter (b, c);     // sliders + macros + mod wheel
+    epicMotion (b, c);         // v1.1: slow bloom and drift on big sustained sounds
     fxOrder (b);
     // gentle humanisation of pitch-free details
     for (int i = 1; i <= 4; ++i)
@@ -772,20 +1033,63 @@ Preset Generator::candidate (const GenRequest& req, uint32_t seed)
     return p;
 }
 
-Preset Generator::generate (const GenRequest& req, int* attempts, Validation* result, int maxAttempts)
+Preset Generator::generate (const GenRequest& req, int* attempts, Validation* result, int maxAttempts, int pickBest)
 {
-    Preset best;
-    Validation bestV;
-    for (int a = 0; a < maxAttempts; ++a)
+    Preset best, fallback;
+    Validation bestV, fallbackV;
+    float bestScore = -1e9f;
+    int valid = 0;
+    for (int a = 0; a < maxAttempts && valid < juce::jmax (1, pickBest); ++a)
     {
         auto p = candidate (req, req.seed + (uint32_t) a * 7919u);
         auto v = validate (p, true);
         if (attempts) *attempts = a + 1;
-        if (v.ok) { if (result) *result = v; return p; }
-        if (a == 0 || v.rmsDb > bestV.rmsDb) { best = p; bestV = v; }
+        if (v.ok)
+        {
+            ++valid;
+            v.interest.score = interestScore (p, v);
+            if (v.interest.score > bestScore) { bestScore = v.interest.score; best = p; bestV = v; }
+        }
+        else if (a == 0 || v.rmsDb > fallbackV.rmsDb) { fallback = p; fallbackV = v; }
     }
-    if (result) *result = bestV;
-    return best;
+    if (valid > 0) { if (result) *result = bestV; return best; }
+    if (result) *result = fallbackV;
+    return fallback;
+}
+
+// v1.1: how interesting a VALID candidate sounds for its category (higher is better, ~0..1.3).
+// Targets are ranges, not "more is better": too static loses, too busy (chaos) loses too.
+float Generator::interestScore (const Preset& p, const Validation& v)
+{
+    const auto& in = v.interest;
+    const auto& cat = p.meta.category;
+    const auto& sub = p.meta.subcategory;
+    auto band = [] (float x, float lo, float hi, float soft) { return x < lo ? 1.0f - juce::jmin (1.0f, (lo - x) / soft) : x > hi ? 1.0f - juce::jmin (1.0f, (x - hi) / soft) : 1.0f; };
+    const bool big = cat == "Pad" || cat == "Ambient" || cat == "Strings";
+    const bool decaying = cat == "Pluck" || cat == "Keys" || cat == "Drums/Perc" || sub == "Stab" || sub == "Pizzicato";
+    float mv = cat == "Drums/Perc" ? 0.5f
+             : big ? band (in.flux, 1.8f, 4.5f, 2.0f)
+             : cat == "Arp" ? band (in.flux, 2.0f, 7.0f, 3.0f)
+             : cat == "FX" ? band (in.flux, 1.5f, 6.0f, 3.0f)
+             : decaying ? band (in.flux, 0.8f, 3.5f, 1.5f) : band (in.flux, 1.2f, 3.5f, 1.5f);
+    float ev = decaying ? 0.5f : (big || cat == "FX") ? band (in.evolution, 2.5f, 7.0f, 2.5f) : band (in.evolution, 1.0f, 6.0f, 2.0f);
+    float wd = (cat == "Bass" || cat == "Drums/Perc") ? band (in.width, 0.0f, 0.25f, 0.3f) : band (in.width, 0.35f, 0.95f, 0.35f);
+    float rc = cat == "Bass" ? band (in.richness, 0.4f, 0.85f, 0.3f) : band (in.richness, 0.6f, 0.95f, 0.3f);
+    float s = 0.35f * mv + 0.25f * ev + 0.2f * wd + 0.2f * rc;
+    // never reward chaos or noise
+    if (in.flux > 8.0f && cat != "Drums/Perc") s -= 0.4f;
+    const bool noiseOk = cat == "FX" || cat == "Drums/Perc" || cat == "Ambient";
+    if (! noiseOk && v.flatness > 0.35f) s -= 0.3f;
+    // small bonus for depth: layers and Genesix signature features
+    auto val = [&] (const char* id) { return p.params[(size_t) paramIndex (id)]; };
+    int oscs = 0; bool sig = false;
+    for (int i = 0; i < kNumOsc; ++i)
+        if (p.params[(size_t) P::osc (i, P::oOn)] > 0.5f) { ++oscs; sig |= p.params[(size_t) P::osc (i, P::oType)] == (float) otMutation; }
+    sig |= val ("shimmer_on") > 0.5f || val ("granular_on") > 0.5f
+           || (val ("filter2_on") > 0.5f && (val ("filter2_type") == (float) ftFormant || val ("filter2_type") == (float) ftCombPos));
+    if (oscs >= 3) s += 0.05f;
+    if (sig) s += 0.08f;
+    return s;
 }
 
 // ======================================================================= validation
@@ -829,6 +1133,7 @@ static Validation validateOnce (Preset& p, bool fixLevel, float& missingGainDb)
         m.addEvent (juce::MidiMessage::noteOff (1, notes[i]), (int) (hold * sr));
     }
     renderPreset (p, m, sr, 256, out);
+    v.interest = Generator::measureInterest (out, sr, hold);
 
     const int n = out.getNumSamples();
     const float* L = out.getReadPointer (0);
@@ -916,6 +1221,81 @@ static Validation validateOnce (Preset& p, bool fixLevel, float& missingGainDb)
     }
     v.ok = v.reason.isEmpty();
     return v;
+}
+
+// ======================================================================= interest metrics
+Interest Generator::measureInterest (const juce::AudioBuffer<float>& b, double sr, double holdSec)
+{
+    Interest r;
+    const int n = juce::jmin (b.getNumSamples(), (int) (holdSec * sr));
+    const float* L = b.getReadPointer (0);
+    const float* R = b.getReadPointer (b.getNumChannels() > 1 ? 1 : 0);
+    if (n < 4096) return r;
+    // attack: first 50 ms window reaching 90 % of the loudest one
+    const int aw = (int) (0.05 * sr);
+    std::vector<float> wr;
+    for (int s = 0; s + aw <= n; s += aw / 2)
+    {
+        double e = 0;
+        for (int i = s; i < s + aw; ++i) e += 0.5 * ((double) L[i] * L[i] + (double) R[i] * R[i]);
+        wr.push_back ((float) std::sqrt (e / aw));
+    }
+    const float mx = wr.empty() ? 0.0f : *std::max_element (wr.begin(), wr.end());
+    for (size_t i = 0; i < wr.size(); ++i) if (wr[i] >= 0.9f * mx) { r.attackMs = (float) (i * (aw / 2) / sr * 1000.0); break; }
+    // stereo width
+    double mid = 0, side = 0;
+    for (int i = 0; i < n; ++i) { const double m = 0.5 * (L[i] + R[i]), s = 0.5 * (L[i] - R[i]); mid += m * m; side += s * s; }
+    r.width = (float) std::sqrt (side / juce::jmax (1e-12, mid));
+    // band spectra per frame (32 log bands, 100 Hz - 12 kHz)
+    constexpr int order = 11, N = 1 << order, kBands = 32;
+    juce::dsp::FFT fft (order);
+    std::vector<float> buf ((size_t) N * 2);
+    std::vector<std::array<float, kBands>> frames;
+    const int startS = (int) (0.05 * sr);
+    for (int s = startS; s + N <= n; s += N / 2)
+    {
+        std::fill (buf.begin(), buf.end(), 0.0f);
+        for (int i = 0; i < N; ++i) buf[(size_t) i] = 0.5f * (L[s + i] + R[s + i]) * (0.5f - 0.5f * std::cos (kTwoPi * (float) i / (float) N));
+        fft.performFrequencyOnlyForwardTransform (buf.data());
+        std::array<float, kBands> band {};
+        for (int k = 1; k < N / 2; ++k)
+        {
+            const double f = k * sr / N;
+            if (f < 100 || f >= 12000) continue;
+            const int bi = juce::jlimit (0, kBands - 1, (int) (std::log (f / 100.0) / std::log (120.0) * kBands));
+            band[(size_t) bi] += buf[(size_t) k] * buf[(size_t) k];
+        }
+        for (auto& v : band) v = 10.0f * std::log10 (v + 1e-12f);
+        frames.push_back (band);
+    }
+    if (frames.size() < 3) return r;
+    // ignore near-silent frames (decays) for the movement figures
+    float loud = -300;
+    for (auto& f : frames) loud = juce::jmax (loud, *std::max_element (f.begin(), f.end()));
+    double flux = 0; int fluxN = 0;
+    for (size_t i = 1; i < frames.size(); ++i)
+    {
+        if (*std::max_element (frames[i].begin(), frames[i].end()) < loud - 40) continue;
+        double d = 0;
+        for (int k = 0; k < kBands; ++k) d += std::abs (juce::jmax (frames[i][(size_t) k], loud - 60) - juce::jmax (frames[i - 1][(size_t) k], loud - 60));
+        flux += d / kBands; ++fluxN;
+    }
+    r.flux = fluxN > 0 ? (float) (flux / fluxN) : 0.0f;
+    const size_t q = juce::jmax ((size_t) 1, frames.size() / 4);
+    std::array<float, kBands> a {}, z {};
+    for (size_t i = 0; i < q; ++i)
+        for (int k = 0; k < kBands; ++k) { a[(size_t) k] += frames[i][(size_t) k] / q; z[(size_t) k] += frames[frames.size() - 1 - i][(size_t) k] / q; }
+    // compare spectral SHAPE (level-normalised), so a plain decay is not "evolution"
+    const float ma = *std::max_element (a.begin(), a.end()), mz = *std::max_element (z.begin(), z.end());
+    double ev = 0;
+    for (int k = 0; k < kBands; ++k) ev += std::abs (juce::jmax (a[(size_t) k] - ma, -50.0f) - juce::jmax (z[(size_t) k] - mz, -50.0f));
+    r.evolution = (float) (ev / kBands);
+    const auto& mf = frames[frames.size() / 2];
+    const float top = *std::max_element (mf.begin(), mf.end());
+    int rich = 0;
+    for (auto v : mf) rich += v > top - 36.0f;
+    r.richness = (float) rich / kBands;
+    return r;
 }
 
 // ======================================================================= mutate / blend

@@ -13,17 +13,17 @@ const juce::StringArray& categories()
 const juce::StringArray& subcategories (const juce::String& cat)
 {
     static const std::map<juce::String, juce::StringArray> m {
-        { "Bass", { "Sub", "Synth", "Reese", "Acid", "Wobble", "FM", "Pluck" } },
-        { "Lead", { "Mono", "Poly", "Sync", "Supersaw", "FM", "Soft" } },
-        { "Pad", { "Warm", "Evolving", "Dark", "Bright", "Choir", "Gated" } },
+        { "Bass", { "Sub", "Synth", "Reese", "Acid", "Wobble", "FM", "Pluck", "Growl" } },
+        { "Lead", { "Mono", "Poly", "Sync", "Supersaw", "FM", "Soft", "Anthem", "Vocal" } },
+        { "Pad", { "Warm", "Evolving", "Dark", "Bright", "Choir", "Gated", "Cinematic" } },
         { "Pluck", { "Short", "Bell", "Mallet", "Synth" } },
         { "Keys", { "Electric", "Organ", "Bell", "Clav", "Digital" } },
         { "Arp", { "Classic", "Trance", "Evolving", "Sequence" } },
-        { "Strings", { "Ensemble", "Solo", "Pizzicato", "Synth" } },
-        { "Brass", { "Synth Brass", "Stab", "Horn" } },
+        { "Strings", { "Ensemble", "Solo", "Pizzicato", "Synth", "Hybrid" } },
+        { "Brass", { "Synth Brass", "Stab", "Horn", "Trailer" } },
         { "FX", { "Riser", "Downer", "Noise", "Texture", "Impact" } },
         { "Drums/Perc", { "Kick", "Snare", "Hat", "Tom", "Perc" } },
-        { "Ambient", { "Drone", "Texture", "Soundscape" } },
+        { "Ambient", { "Drone", "Texture", "Soundscape", "Cathedral" } },
     };
     static const juce::StringArray none;
     auto it = m.find (cat);
