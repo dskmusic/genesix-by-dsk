@@ -33,6 +33,7 @@ namespace col
 }
 
 juce::Font font (float size, bool bold = false);
+juce::Font techFont (float size);   // embedded Orbitron (GENERATE button)
 juce::Font monoFont (float size);
 
 void drawPanel (juce::Graphics& g, juce::Rectangle<float> r, float radius = 6.0f, bool inset = false);

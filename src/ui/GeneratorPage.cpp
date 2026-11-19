@@ -19,6 +19,7 @@ void GenerateButton::burst()
 
 void GenerateButton::animate (float dt, float energy, bool busy)
 {
+    level += (energy - level) * juce::jmin (1.0f, dt * 8.0f);
     working = busy;
     spin += dt * (busy ? 4.0f : 0.35f + energy * 1.5f);
     pulse += dt * 2.0f;
@@ -33,6 +34,64 @@ void GenerateButton::paint (juce::Graphics& g)
     const auto b = getLocalBounds().toFloat();
     const auto c = b.getCentre();
     const float r = juce::jmin (b.getWidth(), b.getHeight()) * 0.36f;
+    const float act = juce::jlimit (0.0f, 1.0f, level * 1.6f + (working ? 0.5f : 0.0f) + glow * 0.5f);
+    // ---- backdrop: reactive radial glow, dot grid, guide rings and orbiting markers
+    {
+        // everything lives inside an ellipse that fades to zero before the component edges (no visible box)
+        const float ex = b.getWidth() * 0.5f - 2.0f, ey = b.getHeight() * 0.5f - 2.0f;
+        auto edist = [&] (float x, float y) { const float dx = (x - c.x) / ex, dy = (y - c.y) / ey; return std::sqrt (dx * dx + dy * dy); };
+        {
+            juce::Graphics::ScopedSaveState ss (g);
+            g.addTransform (juce::AffineTransform::scale (ex / ey, 1.0f, c.x, c.y));          // circle -> ellipse
+            juce::ColourGradient halo (col::accent.withAlpha (0.10f + 0.16f * act), c.x, c.y, col::accent.withAlpha (0.0f), c.x + ey, c.y, true);
+            halo.addColour (0.55, col::accent.withAlpha ((0.10f + 0.16f * act) * 0.35f));
+            g.setGradientFill (halo);
+            g.fillEllipse (juce::Rectangle<float> (ey * 2, ey * 2).withCentre (c));
+        }
+        const float step = 13.0f;
+        for (float y = std::fmod (c.y, step); y < b.getBottom(); y += step)
+            for (float x = std::fmod (c.x, step); x < b.getRight(); x += step)
+            {
+                const float dn = edist (x, y), d = juce::Point<float> (x, y).getDistanceFrom (c);
+                if (d < r * 1.38f || dn >= 1.0f) continue;
+                const float wave = 0.5f + 0.5f * std::sin (d * 0.06f - spin * 3.0f);   // ripple travelling outwards
+                const float fade = juce::jmin (1.0f, (1.0f - dn) * 3.0f);
+                const float a = fade * (0.08f + 0.24f * act * wave);
+                g.setColour ((wave > 0.8f && act > 0.2f ? col::accent : col::textDim).withAlpha (a));
+                g.fillEllipse (x - 1.0f, y - 1.0f, 2.0f, 2.0f);
+            }
+        // orbit rings: wider than tall so they never touch the top/bottom
+        const float ry = juce::jmin (r * 1.34f, ey - 3.0f);
+        for (float k : { 1.55f, 1.95f })
+        {
+            g.setColour (col::textDim.withAlpha (k < 1.7f ? 0.16f : 0.10f));
+            g.drawEllipse (juce::Rectangle<float> (r * 2 * k, ry * 2 * (k < 1.7f ? 0.94f : 1.0f)).withCentre (c), 1.0f);
+        }
+        // crosshair rails fading out to the sides
+        for (int side : { -1, 1 })
+        {
+            juce::ColourGradient rail (col::textDim.withAlpha (0.22f), c.x + side * r * 1.95f, c.y, col::textDim.withAlpha (0.0f), c.x + side * ex, c.y, false);
+            g.setGradientFill (rail);
+            g.fillRect (juce::Rectangle<float> (c.x + juce::jmin (side * r * 1.95f, side * ex), c.y - 0.5f, ex - r * 1.95f, 1.0f));
+        }
+        // counter-rotating arc segments on the inner orbit
+        for (int i = 0; i < 3; ++i)
+        {
+            const float a0 = -spin * 0.6f + (float) i * kTwoPi / 3.0f;
+            juce::Path arc;
+            arc.addCentredArc (c.x, c.y, r * 1.55f, ry * 0.94f, 0, a0, a0 + 0.55f, true);
+            g.setColour (col::accent2.withAlpha (0.25f + 0.45f * act));
+            g.strokePath (arc, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        // markers orbiting on the outer ring
+        for (int i = 0; i < 6; ++i)
+        {
+            const float a = spin * 0.45f + (float) i * kTwoPi / 6.0f;
+            const auto p = c + juce::Point<float> (std::cos (a) * r * 1.95f, std::sin (a) * ry);
+            g.setColour ((i % 2 ? col::accent3 : col::accent).withAlpha (0.35f + 0.5f * act));
+            g.fillEllipse (juce::Rectangle<float> (4.0f, 4.0f).withCentre (p));
+        }
+    }
     // outer rotating ring of ticks
     for (int i = 0; i < 48; ++i)
     {
@@ -61,9 +120,22 @@ void GenerateButton::paint (juce::Graphics& g)
         g.setColour (juce::Colours::white.withAlpha (0.8f));
         g.strokePath (arc, juce::PathStrokeType (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     }
-    g.setColour (juce::Colours::black.withAlpha (0.85f));
-    g.setFont (font (r * 0.34f, true));
-    g.drawText (working ? L ("CREANDO…", "CREATING…") : L ("GENERAR", "GENERATE"), b, juce::Justification::centred);
+    // label: tech font, shrunk to fit well inside the circle in any language, faux-bold via a thin outline
+    {
+        const auto text = working ? L ("CREANDO…", "CREATING…") : L ("GENERAR", "GENERATE");
+        auto f = techFont (r * 0.30f);
+        juce::GlyphArrangement ga;
+        ga.addLineOfText (f, text, 0, 0);
+        const float maxW = r * 1.5f, w = ga.getBoundingBox (0, -1, true).getWidth();
+        if (w > maxW) { f = techFont (r * 0.30f * maxW / w); ga.clear(); ga.addLineOfText (f, text, 0, 0); }
+        const auto bb = ga.getBoundingBox (0, -1, true);
+        juce::Path tp;
+        ga.createPath (tp);
+        tp.applyTransform (juce::AffineTransform::translation (c.x - bb.getCentreX(), c.y - bb.getCentreY()));
+        g.setColour (juce::Colours::black.withAlpha (0.85f));
+        g.fillPath (tp);
+        g.strokePath (tp, juce::PathStrokeType (r * 0.012f + 0.6f));
+    }
     for (auto& p : particles)
     {
         g.setColour (p.c.withAlpha (juce::jlimit (0.0f, 1.0f, p.life)));
@@ -223,10 +295,18 @@ GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macr
         s->setRange (0, 1, 0.01);
         s->setValue (defaults[i], juce::dontSendNotification);
         s->setPopupDisplayEnabled (true, true, nullptr);
-        s->setTooltip (sliderNames[i]);
+        s->setTooltip (sliderNames[i] + L (" (doble clic: valor de fábrica)", " (double-click: factory value)"));
+        s->setDoubleClickReturnValue (true, defaults[i]);
         s->getProperties().set ("arc", (juce::int64) (i == 4 ? col::accent3 : i == 2 ? col::danger : col::accent).getARGB());
         addAndMakeVisible (s);
     }
+    resetChar.setButtonText (L ("Restablecer", "Reset"));
+    resetChar.setTooltip (L ("Devolver los controles de carácter a sus valores de fábrica", "Return the character controls to their factory values"));
+    resetChar.onClick = [this, defaults]
+    {
+        for (int i = 0; i < sliders.size(); ++i) sliders[i]->setValue (defaults[i], juce::sendNotificationSync);
+    };
+    addAndMakeVisible (resetChar);
     const juce::String lockNames[] { "OSC", L ("FILTRO", "FILTER"), "ENV", "MOD", "FX", L ("RITMO", "RHYTHM") };
     const char* lockIds[] { "osc", "filter", "env", "mod", "fx", "rhythm" };
     for (int i = 0; i < 6; ++i)
@@ -508,7 +588,10 @@ void GeneratorPage::resized()
     auto cats = left.removeFromTop (6 * 30);
     for (int i = 0; i < catButtons.size(); ++i)
         catButtons[i]->setBounds (juce::Rectangle<int> (cats.getX() + (i % 2) * cats.getWidth() / 2, cats.getY() + (i / 2) * 30, cats.getWidth() / 2, 30).reduced (2));
-    left.removeFromTop (8 + 18);
+    {
+        auto title = left.removeFromTop (8 + 18).withTrimmedTop (4);   // same row as the CHARACTER label
+        resetChar.setBounds (title.removeFromRight (78).withSizeKeepingCentre (78, 20));
+    }
     auto sl = left.removeFromTop (230).withTrimmedBottom (18);
     const int sw = sl.getWidth() / sliders.size();
     for (int i = 0; i < sliders.size(); ++i) sliders[i]->setBounds (sl.getX() + i * sw, sl.getY(), sw, sl.getHeight());
@@ -521,7 +604,7 @@ void GeneratorPage::resized()
     r.removeFromRight (8);
     // centre
     auto c = r;
-    genButton.setBounds (c.removeFromTop (220).withSizeKeepingCentre (240, 220));
+    genButton.setBounds (c.removeFromTop (220));
     auto hist = c.removeFromTop (30);
     backBtn.setBounds (hist.withSizeKeepingCentre (160, 26).removeFromLeft (34));
     fwdBtn.setBounds (hist.withSizeKeepingCentre (160, 26).removeFromRight (34));

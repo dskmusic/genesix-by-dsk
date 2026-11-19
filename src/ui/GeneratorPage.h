@@ -12,15 +12,21 @@ class GenerateButton : public juce::Component, public juce::SettableTooltipClien
 public:
     GenerateButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip (L ("Generar un preset nuevo (Ctrl+Enter)", "Generate a new preset (Ctrl+Enter)")); }
     void paint (juce::Graphics&) override;
+    // the component spans the whole centre column (for the backdrop) but only the disc is clickable
+    bool hitTest (int x, int y) override
+    {
+        const auto b = getLocalBounds().toFloat();
+        return b.getCentre().getDistanceFrom ({ (float) x, (float) y }) <= juce::jmin (b.getWidth(), b.getHeight()) * 0.36f * 1.12f;
+    }
     void mouseDown (const juce::MouseEvent&) override { pressed = true; repaint(); }
-    void mouseUp (const juce::MouseEvent& e) override { pressed = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
+    void mouseUp (const juce::MouseEvent& e) override { pressed = false; repaint(); if (hitTest (e.x, e.y) && onClick) onClick(); }
     void burst();
     void animate (float dt, float energy, bool busy);
     std::function<void()> onClick;
 private:
     struct Particle { juce::Point<float> p, v; float life = 0; juce::Colour c; };
     std::vector<Particle> particles;
-    float spin = 0, pulse = 0, glow = 0;
+    float spin = 0, pulse = 0, glow = 0, level = 0;
     bool pressed = false, working = false;
     juce::Random rng;
 };
@@ -87,6 +93,7 @@ private:
     juce::OwnedArray<juce::TextButton> catButtons;
     juce::OwnedArray<juce::Slider> sliders;
     juce::StringArray sliderNames;
+    juce::TextButton resetChar;          // "Reset" next to the CHARACTER title
     juce::OwnedArray<juce::ToggleButton> locks;
     juce::String category = "Lead";
     // centre

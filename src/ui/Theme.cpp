@@ -1,10 +1,28 @@
 #include "Theme.h"
+#if __has_include(<BinaryData.h>)
+ #include <BinaryData.h>
+ #define GX_HAS_FONTDATA 1
+#endif
 
 namespace gx::ui
 {
 juce::Font font (float size, bool bold)
 {
     return juce::Font (juce::FontOptions (size, bold ? juce::Font::bold : juce::Font::plain));
+}
+// Orbitron (SIL OFL 1.1, see licenses/Orbitron-OFL.txt), embedded unmodified; falls back to the UI font.
+juce::Font techFont (float size)
+{
+#if GX_HAS_FONTDATA
+    static juce::Typeface::Ptr tf = [] () -> juce::Typeface::Ptr
+    {
+        int n = 0;
+        if (auto* d = BinaryData::getNamedResource ("Orbitron_ttf", n)) return juce::Typeface::createSystemTypefaceFor (d, (size_t) n);
+        return nullptr;
+    }();
+    if (tf != nullptr) return juce::Font (juce::FontOptions (tf).withHeight (size));
+#endif
+    return font (size, true);
 }
 juce::Font monoFont (float size)
 {

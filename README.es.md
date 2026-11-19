@@ -179,5 +179,6 @@ Las decisiones de diseño están en [DECISIONS.md](DECISIONS.md) y los cambios e
 
 Genesix by DSK es **software libre** bajo **GNU GPL v3** ([LICENSE](LICENSE)).
 Construido con [JUCE](https://juce.com) (GPLv3) y el VST3 SDK de Steinberg (MIT). VST es una marca de Steinberg Media Technologies GmbH.
+El botón GENERAR usa la tipografía [Orbitron](https://github.com/theleagueof/orbitron) (SIL Open Font License 1.1, ver `licenses/Orbitron-OFL.txt`).
 
 Diseño, motor de sonido y presets: **DSK Music** · **[dskmusic.com](https://dskmusic.com)**

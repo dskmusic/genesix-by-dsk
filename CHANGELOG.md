@@ -10,6 +10,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - 7 new archetypes: Bass Growl, Lead Anthem, Lead Vocal, Pad Cinematic, Strings Hybrid, Brass Trailer, Ambient Cathedral.
 - `GenesixTool bank-report` (structural + audio analysis of a preset bank) and `GenesixTool listen-pack` (fixed loudness-matched A/B listening pack).
 - `GenesixTool video <dir>`: scripted 1080p30 product demo rendered from the real editor and engine (frames + audio, mux with ffmpeg).
+### Changed
+- GENERATE button: Orbitron "tech" typeface (embedded, SIL OFL), label always fits inside the disc in every language, and a new reactive backdrop (elliptical glow, rippling dot grid, orbit rings and markers that respond to the audio).
+- CHARACTER section: "Reset" button next to the title and double-click on each slider to return to the factory values.
 ### Fixed
 - Factory bank regenerated with the new generator (220 presets, all 7 new archetypes included; Arp/Evolving curated out of the factory bank, still available when generating).
 - Factory bank builder skipped the last sub-category of 5-item lists (Strings/Hybrid never appeared): fixed round-robin.
