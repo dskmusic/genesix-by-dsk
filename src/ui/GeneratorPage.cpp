@@ -516,5 +516,4 @@ void GeneratorPage::resized()
     macros.setBounds (right.reduced (2, 0));
 }
 
-std::unique_ptr<juce::Component> makeSfzPanel (Context&) { return nullptr; }
 }
