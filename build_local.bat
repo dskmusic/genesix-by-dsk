@@ -10,14 +10,37 @@ cd /d "%~dp0"
 rem Load MSVC x64 environment (VS 2022 / Build Tools) if cl.exe is not on PATH
 where cl >nul 2>nul
 if not errorlevel 1 goto :haveCl
+rem (no "for" loop here: the "(x86)" in the vswhere path breaks for/if blocks and silently aborts cmd)
+set "VSDIR="
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
-for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSDIR=%%i"
+if not exist "%VSWHERE%" goto :vsFallback
+"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > "%TEMP%\gx_vsdir.txt" 2>nul
+set /p VSDIR=<"%TEMP%\gx_vsdir.txt"
+del "%TEMP%\gx_vsdir.txt" >nul 2>nul
+:vsFallback
+if exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" goto :vsFound
+set "VSDIR=%ProgramFiles%\Microsoft Visual Studio\2022\Professional"
+if exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" goto :vsFound
+set "VSDIR=%ProgramFiles%\Microsoft Visual Studio\2022\Community"
+if exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" goto :vsFound
+set "VSDIR=%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise"
+if exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" goto :vsFound
+set "VSDIR=%ProgramFiles(x86)%\Microsoft Visual Studio\2022\BuildTools"
+if exist "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" goto :vsFound
+echo ERROR: no se encuentra Visual Studio 2022 con C++ (Desarrollo para el escritorio con C++).
+goto :fail
+:vsFound
+echo Visual Studio: %VSDIR%
 call "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" >nul || goto :fail
 :haveCl
 
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=%CONFIG% "-DFETCHCONTENT_BASE_DIR=%GX_DEPS%" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 || goto :fail
 cmake --build build || goto :fail
+echo.
+echo Pasando los tests (unos 40-60 segundos sin mensajes, es normal)...
 ctest --test-dir build --output-on-failure || goto :fail
+echo.
+echo Empaquetando...
 
 if /i not "%~2"=="package" goto :done
 for /f "usebackq delims=" %%v in (`python scripts\version.py`) do set "VER=%%v"
