@@ -136,6 +136,7 @@ private:
     double curBpm = 120.0;
     float lastVelocity = 0.8f;
     bool nanReset = false;
+    float dcL = 0, dcR = 0, dcXL = 0, dcXR = 0;
 
     juce::dsp::FFT mutFft { 9 };
     std::vector<float> fftBuf;

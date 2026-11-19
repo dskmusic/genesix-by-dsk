@@ -83,6 +83,7 @@ void Engine::reset()
     sustainPedal = false;
     lastPlayedNote = -1;
     gateGain = 1;
+    dcL = dcR = dcXL = dcXR = 0;
 }
 
 void Engine::allNotesOff()
@@ -774,6 +775,13 @@ void Engine::process (juce::AudioBuffer<float>& out, const juce::MidiBuffer& mid
         pos += n;
     }
 
+    // DC blocker (PWM / asymmetric shapes) before the effects
+    for (int i = 0; i < N; ++i)
+    {
+        const float l = L[i], r = R[i];
+        dcL = l - dcXL + 0.9995f * dcL; dcXL = l; L[i] = dcL;
+        dcR = r - dcXR + 0.9995f * dcR; dcXR = r; R[i] = dcR;
+    }
     for (int pos = 0; pos < N; pos += kFxBlock)
         fx.process (L + pos, R + pos, juce::jmin (kFxBlock, N - pos), gp.data(), pt.fxOrder, curBpm);
 

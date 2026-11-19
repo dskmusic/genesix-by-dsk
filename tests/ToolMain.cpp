@@ -1,5 +1,6 @@
 #include "Tests.h"
 #include "PluginEditor.h"
+#include "gen/Generator.h"
 
 int main (int argc, char** argv)
 {
@@ -27,6 +28,49 @@ int main (int argc, char** argv)
         p.renderOffline (out, m, sr, 256);
         const double ms = juce::Time::getMillisecondCounterHiRes() - t0;
         std::printf ("rendered %.0f s in %.0f ms -> %.1f%% of one core\n", secs, ms, ms / (secs * 10.0));
+        return 0;
+    }
+    if (cmd == "gen-debug")
+    {
+        gx::GenRequest r; r.category = juce::String::fromUTF8 (argv[2]); r.seed = (uint32_t) juce::String (argv[3]).getIntValue(); if (argc > 4) r.subcategory = argv[4];
+        for (int k = 0; k < 5; ++k)
+        {
+            auto p = gx::Generator::candidate (r, r.seed + (uint32_t) k * 7919u);
+            const float m0 = p.params[(size_t) gx::P::master];
+            auto v = gx::Generator::validate (p);
+            std::printf ("%s/%s '%s': ok=%d %s rms=%.1f peak=%.1f dc=%.4f sus=%.2f tail=%.1f cent=%.0f flat=%.2f master %.1f->%.1f\n",
+                         p.meta.category.toRawUTF8(), p.meta.subcategory.toRawUTF8(), p.meta.name.toRawUTF8(), (int) v.ok, v.reason.toRawUTF8(),
+                         v.rmsDb, v.peakDb, v.dc, v.sustainRatio, v.tailDb, v.centroidHz, v.flatness, m0, p.params[(size_t) gx::P::master]);
+        }
+        return 0;
+    }
+    if (cmd == "gen-report")
+    {
+        // GenesixTool gen-report [count]: attempts and validation per category
+        const int count = argc > 2 ? juce::String (argv[2]).getIntValue() : 10;
+        for (auto& cat : gx::categories())
+        {
+            int att = 0, fails = 0; float rms = 0;
+            std::map<juce::String, int> reasons;
+            for (int i = 0; i < count; ++i)
+            {
+                gx::GenRequest r; r.category = cat; r.seed = (uint32_t) (1000 + i * 31);
+                juce::Random rnd (i);
+                r.brightness = rnd.nextFloat(); r.movement = rnd.nextFloat(); r.aggression = rnd.nextFloat(); r.space = rnd.nextFloat(); r.weirdness = rnd.nextFloat();
+                for (int k = 0; k < 24; ++k)
+                {
+                    auto p = gx::Generator::candidate (r, r.seed + (uint32_t) k * 7919u);
+                    auto v = gx::Generator::validate (p);
+                    ++att;
+                    if (v.ok) { rms += v.rmsDb; break; }
+                    reasons[v.reason]++;
+                    if (k == 23) ++fails;
+                }
+            }
+            juce::String rs;
+            for (auto& [k, n] : reasons) rs << k << "=" << n << " ";
+            std::printf ("%-11s attempts/preset %.2f  fails %d  rejects: %s\n", cat.toRawUTF8(), (double) att / count, fails, rs.toRawUTF8());
+        }
         return 0;
     }
     if (cmd == "screenshot")
