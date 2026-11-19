@@ -19,9 +19,17 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=%CONFIG% "-DFETCHCONTENT_BASE_DI
 cmake --build build || goto :fail
 ctest --test-dir build --output-on-failure || goto :fail
 
-if /i "%~2"=="package" (
-  python scripts\package.py --platform win --build build --config %CONFIG% || goto :fail
-)
+if /i not "%~2"=="package" goto :done
+for /f "usebackq delims=" %%v in (`python scripts\version.py`) do set "VER=%%v"
+python scripts\package.py --platform win --build build --config %CONFIG% --version %VER% || goto :fail
+set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+if not exist "%ISCC%" goto :noInno
+"%ISCC%" /Q "/DAppVersion=%VER%" "/DArtDir=..\build\Genesix_artefacts\%CONFIG%" installer\genesix.iss || goto :fail
+python scripts\package.py --platform win --build build --checksums-only || goto :fail
+goto :done
+:noInno
+echo (Inno Setup 6 no encontrado: se omite el instalador .exe)
+:done
 echo.
 echo VST3:       build\Genesix_artefacts\%CONFIG%\VST3\Genesix by DSK.vst3
 echo Standalone: build\Genesix_artefacts\%CONFIG%\Standalone\Genesix by DSK.exe

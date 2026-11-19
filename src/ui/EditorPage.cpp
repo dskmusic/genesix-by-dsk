@@ -105,7 +105,7 @@ private:
             fm.registerBasicFormats();
             std::unique_ptr<juce::AudioFormatReader> rd (fm.createReaderFor (f));
             if (! rd) { if (ctx.toast) ctx.toast ("Formato no soportado"); return; }
-            const int len = (int) juce::jmin<juce::int64> (rd->lengthInSamples, 2048 * 256);
+            const int len = (int) std::min<juce::int64> (rd->lengthInSamples, (juce::int64) 2048 * 256);
             juce::AudioBuffer<float> b (1, len);
             rd->read (&b, 0, len, 0, true, false);
             const int cycle = len >= 2048 ? 2048 : len;

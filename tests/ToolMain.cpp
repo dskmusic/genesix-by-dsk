@@ -31,6 +31,68 @@ int main (int argc, char** argv)
         std::printf ("rendered %.0f s in %.0f ms -> %.1f%% of one core\n", secs, ms, ms / (secs * 10.0));
         return 0;
     }
+    if (cmd == "factory")
+    {
+        // GenesixTool factory <out.genesixbank> [perCategory]
+        const juce::File out = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "resources/factory.genesixbank");
+        const int perCat = argc > 3 ? juce::String (argv[3]).getIntValue() : 20;
+        juce::Array<juce::var> bank;
+        juce::StringArray names;
+        int total = 0, rejectedDup = 0;
+        for (int ci = 0; ci < gx::categories().size(); ++ci)
+        {
+            const auto cat = gx::categories()[ci];
+            const auto subs = gx::subcategories (cat);
+            std::vector<gx::Preset> accepted;
+            for (int k = 0, guard = 0; (int) accepted.size() < perCat && guard < perCat * 12; ++guard)
+            {
+                gx::GenRequest r;
+                r.category = cat;
+                r.subcategory = subs[((int) accepted.size() + guard / 4) % subs.size()]; // skip a sub that keeps failing
+                r.seed = (uint32_t) (ci * 100003 + guard * 7919 + 17);
+                gx::Rng rng (r.seed);
+                // musically spread character settings, deterministic
+                r.brightness = 0.15f + 0.7f * rng.uni();
+                r.movement = 0.1f + 0.85f * rng.uni();
+                r.aggression = cat == "Pad" || cat == "Ambient" ? 0.05f + 0.35f * rng.uni() : 0.1f + 0.75f * rng.uni();
+                r.space = cat == "Bass" || cat == "Drums/Perc" ? 0.05f + 0.4f * rng.uni() : 0.2f + 0.75f * rng.uni();
+                r.weirdness = rng.uni() < 0.7f ? 0.05f + 0.3f * rng.uni() : 0.45f + 0.5f * rng.uni();
+                gx::Validation v;
+                auto p = gx::Generator::generate (r, nullptr, &v);
+                if (! v.ok) continue;
+                bool dup = false;
+                for (auto& a : accepted) dup |= a.meta.subcategory == p.meta.subcategory && a.similarity (p) > 0.95f;
+                if (dup) { ++rejectedDup; continue; }
+                for (int t = 0; names.contains (p.meta.name) && t < 30; ++t) p.meta.name = gx::Generator::makeName (cat, p.meta.subcategory, rng);
+                if (names.contains (p.meta.name)) p.meta.name << " II";
+                names.add (p.meta.name);
+                p.meta.author = "DSK Music";
+                p.meta.factory = true;
+                p.meta.uuid = juce::Uuid().toString();
+                p.meta.created = p.meta.modified = juce::Time (2026, 10, 1, 12, 0);
+                juce::String tips = juce::String::fromUTF8 ("Macros: 1 Brillo, 2 Timbre, 3 Espacio, 4 Carácter. Mod wheel abre el filtro.");
+                if (p.params[(size_t) gx::P::arpOn] > 0.5f) tips << juce::String::fromUTF8 (" Mantén un acorde: el arpegiador hace el resto.");
+                if (p.params[(size_t) gx::P::tgOn] > 0.5f) tips << " Trance gate sincronizado al tempo.";
+                for (int s = 0; s < gx::kNumModSlots; ++s)
+                    if ((int) p.params[(size_t) gx::P::mod (s, gx::P::mSrc)] == gx::msStepSeq) { tips << " Step sequencer modulando el timbre."; break; }
+                p.meta.notes = tips;
+                accepted.push_back (p);
+                ++k;
+            }
+            for (auto& p : accepted) bank.add (p.toVar());
+            total += (int) accepted.size();
+            std::printf ("%-11s %d presets\n", cat.toRawUTF8(), (int) accepted.size());
+        }
+        auto* root = new juce::DynamicObject();
+        root->setProperty ("format", "genesixbank");
+        root->setProperty ("version", gx::kPresetFormatVersion);
+        root->setProperty ("name", "Genesix Factory");
+        root->setProperty ("presets", bank);
+        out.getParentDirectory().createDirectory();
+        out.replaceWithText (juce::JSON::toString (juce::var (root), true));
+        std::printf ("factory bank: %d presets (%d near-duplicates rejected) -> %s\n", total, rejectedDup, out.getFullPathName().toRawUTF8());
+        return 0;
+    }
     if (cmd == "gen-debug")
     {
         gx::GenRequest r; r.category = juce::String::fromUTF8 (argv[2]); r.seed = (uint32_t) juce::String (argv[3]).getIntValue(); if (argc > 4) r.subcategory = argv[4];

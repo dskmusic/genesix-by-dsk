@@ -101,7 +101,7 @@ std::vector<ParamDef> build()
     using namespace P;
     Builder B;
     B.group = "global";
-    B.f (master, "master", "Master", lin (-48.0f, 12.0f), -6.0f, "dB");
+    B.f (master, "master", "Master", lin (-48.0f, 24.0f), -6.0f, "dB");
     B.in (polyphony, "polyphony", "Polyphony", 1, kMaxVoices, 16);
     B.c (playMode, "play_mode", "Play Mode", { "Poly", "Mono", "Legato" }, 0);
     B.f (glide, "glide", "Glide", skewed (0.0f, 2.0f, 0.25f), 0.0f, "s");

@@ -159,7 +159,7 @@ void PresetsPage::paintListBoxItem (int row, juce::Graphics& g, int w, int h, bo
     g.setColour (col::textDim);
     g.setFont (font (11.5f));
     g.drawText (m.category + (m.subcategory.isNotEmpty() ? " / " + m.subcategory : juce::String()), 28 + w / 3, 0, w / 5, h, juce::Justification::centredLeft);
-    g.drawText (m.tags.joinIntoString (", "), 28 + w / 3 + w / 5, 0, w / 4, h, juce::Justification::centredLeft);
+    g.drawFittedText (m.tags.joinIntoString (", "), 28 + w / 3 + w / 5, 0, w - 160 - (28 + w / 3 + w / 5), h, juce::Justification::centredLeft, 1, 0.8f);
     juce::String stars;
     for (int i = 0; i < 5; ++i) stars << (i < m.rating ? juce::String::fromUTF8 ("\xe2\x98\x85") : juce::String::fromUTF8 ("\xc2\xb7"));
     g.setColour (col::accent2);

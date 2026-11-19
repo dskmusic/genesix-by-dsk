@@ -651,6 +651,20 @@ void applyCharacter (B& b, const juce::String& cat)
         b.mod ("lfo4", targets[b.pick (3)], b.scaleLin (0.05f, 0.25f, q.movement));
         if (q.movement > 0.75f && b.get ("chorus_on") < 0.5f && b.chance (0.5f)) { b.fxOn ("phaser_on"); b.set ("phaser_mix", b.rr (0.2f, 0.4f)); }
     }
+    // Step sequencer as a rhythmic modulation source (filter / timbre steps)
+    if (tonal && q.movement > 0.5f && cat != "Drums/Perc" && b.chance (0.3f + 0.3f * q.movement))
+    {
+        b.set ("seq_rate", (float) b.pickOf ({ (int) d16, (int) d8, (int) d16 }));
+        const int steps = b.pickOf ({ 8, 16, 16 });
+        b.set ("seq_steps", (float) steps);
+        b.set ("seq_glide", b.chance (0.5f) ? b.rr (0.1f, 0.5f) : 0.0f);
+        static const float shapes[4][8] { { 1, -0.2f, 0.5f, -0.6f, 0.8f, -0.4f, 0.2f, -1 }, { -1, -0.5f, 0, 0.5f, 1, 0.5f, 0, -0.5f },
+                                          { 1, -1, 1, -1, 0.3f, -0.3f, 0.6f, -0.6f }, { 0.8f, 0.8f, -0.3f, 0.4f, -0.8f, 0.1f, 0.6f, -0.5f } };
+        const int sh = b.pick (4);
+        for (int i = 0; i < kMaxSeqSteps; ++i) b.p.patterns.seq[(size_t) i] = juce::jlimit (-1.0f, 1.0f, shapes[sh][i % 8] + b.rr (-0.15f, 0.15f));
+        b.mod ("stepseq", b.chance (0.6f) ? "filter1_cutoff" : "osc1_morph", b.scaleLin (0.12f, 0.3f, q.movement));
+        if (b.get ("filter1_on") < 0.5f) b.filter (1, ftLp12, 6000, 0.15f);
+    }
     // Weirdness: unusual sources and FX, never randomness for its own sake
     if (q.weirdness > 0.45f && tonal)
     {
@@ -893,10 +907,10 @@ static Validation validateOnce (Preset& p, bool fixLevel, float& missingGainDb)
         gain = juce::jmin (gain, -1.0f - v.peakDb);
         auto& master = p.params[(size_t) P::master];
         const float newMaster = master + gain;
-        if (newMaster > 12.0f) { v.reason = "too quiet"; missingGainDb = newMaster - 12.0f; }
+        if (newMaster > 24.0f) { v.reason = "too quiet"; missingGainDb = newMaster - 24.0f; }
         else
         {
-            master = juce::jlimit (-48.0f, 12.0f, newMaster);
+            master = juce::jlimit (-48.0f, 24.0f, newMaster);
             v.rmsDb += gain; v.peakDb += gain;
         }
     }

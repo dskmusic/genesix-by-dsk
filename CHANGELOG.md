@@ -2,7 +2,18 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-19
+### Added
+- **GENERADOR**: rule-based smart preset generator (11 categories, 50+ archetypes, 5 character sliders, section locks, mutate, blend), offline validation with automatic level control, animated "AI" console (ES/EN, 54+ messages per category), parameter resolve/assemble animation, live oscilloscope/spectrum/VU/LED matrix/circuit bus, persistent browser-like history (◀ ▶, Alt+←/→).
+- **PRESETS**: Omnisphere-style manager (category/sub-category tree, character tags, type/author/folder filters, instant search, sorting, stars, favourites, use count, preview on select, keyboard navigation, save/save as/rename/duplicate/delete/move/edit metadata, user folders, import/export of presets and banks).
+- **201 factory presets** (all generated, validated and de-duplicated; arp, trance gate and step-sequencer presets included).
+- **EDITOR**: OSC (waveform views, wavetable editor/importer), FILTROS (response view), MOD (envelope views, drawable LFOs, macros, drag-and-drop matrix), ARP/GATE/SEQ (step lanes), FX (reorderable chain); undo/redo, A/B, section copy/paste, MIDI learn.
+- **EXPORTAR**: `.genesix` export/import and SFZ multisample export (velocity layers, crossfaded loops, batch, cancellable progress, warnings).
+- **AJUSTES**: UI scale 50–200 %, animation level, AI messages on/off and language, history limit, preview on select, MIDI-learn reset.
+- FL-Studio-style LookAndFeel, vector logo linking to dskmusic.com, About box.
+- macOS universal build (VST3 + AU + Standalone, pkg installer), Windows installer, SHA256 checksums.
+
+## [0.1.0] - development
 - Preset system: versioned `.genesix` JSON (params, mod matrix by id, patterns, embedded wavetables/samples, metadata) with migration hook; plugin state uses the same format.
 - Preset library: factory bank + user folder (Documents/DSK Music/Genesix), cached JSON index, favorites/ratings/use counts overlay, instant multi-field search, category/subcategory/tags/type/author/folder filters, sorting, rename/duplicate/delete/move, user folders, import/export of presets and `.genesixbank` banks.
 - Synth engine: 32-voice allocator (poly/mono/legato, glide, sustain, MPE), unison up to 8 (detune/spread/blend).
