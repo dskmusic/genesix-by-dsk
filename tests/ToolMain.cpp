@@ -49,13 +49,14 @@ int main (int argc, char** argv)
         for (int ci = 0; ci < gx::categories().size(); ++ci)
         {
             const auto cat = gx::categories()[ci];
-            const auto subs = gx::subcategories (cat);
+            auto subs = gx::subcategories (cat);
+            if (cat == "Arp") subs.removeString ("Evolving"); // curated out of the factory bank (still available in the generator)
             std::vector<gx::Preset> accepted;
-            for (int k = 0, guard = 0; (int) accepted.size() < perCat && guard < perCat * 12; ++guard)
+            for (int k = 0, guard = 0, misses = 0; (int) accepted.size() < perCat && guard < perCat * 12; ++guard)
             {
                 gx::GenRequest r;
                 r.category = cat;
-                r.subcategory = subs[((int) accepted.size() + guard / 4) % subs.size()]; // skip a sub that keeps failing
+                r.subcategory = subs[((int) accepted.size() + misses / 3) % subs.size()]; // round-robin; shift the rotation after every 3 misses
                 r.seed = (uint32_t) (ci * 100003 + guard * 7919 + 17);
                 gx::Rng rng (r.seed);
                 // musically spread character settings, deterministic
@@ -66,10 +67,10 @@ int main (int argc, char** argv)
                 r.weirdness = rng.uni() < 0.7f ? 0.05f + 0.3f * rng.uni() : 0.45f + 0.5f * rng.uni();
                 gx::Validation v;
                 auto p = gx::Generator::generate (r, nullptr, &v);
-                if (! v.ok) continue;
+                if (! v.ok) { ++misses; continue; }
                 bool dup = false;
                 for (auto& a : accepted) dup |= a.meta.subcategory == p.meta.subcategory && a.similarity (p) > 0.95f;
-                if (dup) { ++rejectedDup; continue; }
+                if (dup) { ++rejectedDup; ++misses; continue; }
                 for (int t = 0; names.contains (p.meta.name) && t < 30; ++t) p.meta.name = gx::Generator::makeName (cat, p.meta.subcategory, rng);
                 if (names.contains (p.meta.name)) p.meta.name << " II";
                 names.add (p.meta.name);

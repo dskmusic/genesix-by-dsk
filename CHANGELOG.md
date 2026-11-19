@@ -11,6 +11,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - `GenesixTool bank-report` (structural + audio analysis of a preset bank) and `GenesixTool listen-pack` (fixed loudness-matched A/B listening pack).
 - `GenesixTool video <dir>`: scripted 1080p30 product demo rendered from the real editor and engine (frames + audio, mux with ffmpeg).
 ### Fixed
+- Factory bank regenerated with the new generator (220 presets, all 7 new archetypes included; Arp/Evolving curated out of the factory bank, still available when generating).
+- Factory bank builder skipped the last sub-category of 5-item lists (Strings/Hybrid never appeared): fixed round-robin.
+- Oscilloscope responds to dynamics: smooth auto-gain (instant attack, slow release) instead of full-screen normalisation every frame, and the readout shows the real output level (dBFS).
 - Factory preset notes were shown in Spanish with the English interface: they are now stored in English and shown in Spanish only when the interface is Spanish.
 
 ## [1.1.0] - 2026-11-19

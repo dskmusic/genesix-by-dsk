@@ -56,6 +56,7 @@ private:
     juce::Image trail;
     std::array<float, 512> trace {};
     float energy = 0; double t = 0;
+    float dispPeak = 0.0f, levelDb = -90.0f;   // smoothed display peak (AGC) and real output level
 };
 
 class Spectrum : public juce::Component, public Animated

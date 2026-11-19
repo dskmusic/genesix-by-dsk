@@ -51,12 +51,16 @@ void Scope::tick (const Frame& f)
     int start = Frame::kScope - 1024;
     for (int i = Frame::kScope - 1024; i > 600; --i)
         if (f.scope[(size_t) i - 1] < 0 && f.scope[(size_t) i] >= 0) { start = i - 400; break; }
-    float peak = 0.05f;
+    // responsive auto-gain: instant on louder signals, slow release (~1.5 s) so dynamics and decays stay visible
+    float peak = 0.0f;
     for (int i = 0; i < 512; ++i) peak = juce::jmax (peak, std::abs (f.scope[(size_t) (start + i)]));
-    const float g = 0.9f / peak;
+    if (peak > dispPeak) dispPeak = peak;
+    else dispPeak += (peak - dispPeak) * 0.012f;
+    const float g = juce::jlimit (1.0f, 4.0f, 0.85f / juce::jmax (dispPeak, 0.02f));
+    levelDb += (juce::Decibels::gainToDecibels (f.rms, -90.0f) - levelDb) * 0.25f;
     for (int i = 0; i < 512; ++i)
     {
-        float v = f.scope[(size_t) (start + i)] * juce::jmin (g, 6.0f);
+        float v = juce::jlimit (-1.1f, 1.1f, f.scope[(size_t) (start + i)] * g);
         if (f.rms < 1.0e-4f) // idle: slow organic drift
             v = 0.08f * std::sin ((float) i * 0.045f + (float) t * 1.7f) * std::sin ((float) t * 0.37f + (float) i * 0.011f);
         trace[(size_t) i] = v;
@@ -89,7 +93,7 @@ void Scope::paint (juce::Graphics& g)
     g.setColour (col::phosphor.withAlpha (0.55f));
     g.setFont (monoFont (10.0f));
     g.drawText (label, r.reduced (8, 4), juce::Justification::topLeft);
-    g.drawText (juce::String::formatted ("%04.1f dB", juce::Decibels::gainToDecibels (energy * 0.25f + 1e-6f)), r.reduced (8, 4), juce::Justification::topRight);
+    g.drawText (levelDb <= -89.0f ? juce::String ("-inf dB") : juce::String (levelDb, 1) + " dB", r.reduced (8, 4), juce::Justification::topRight);
 }
 
 // ---------------------------------------------------------------- Spectrum
