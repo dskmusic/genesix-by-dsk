@@ -29,6 +29,7 @@ public:
     void advanceFrames (double dt);   // used by the screenshot tool
     gx::ui::GeneratorPage& generatorPage() { return *generator; }
     void rebuildUi();                 // language switch (also exercised by GenesixTool screenshot)
+    void videoFrame() { stopTimer(); timerCallback(); } // GenesixTool video: one UI frame on the virtual clock
 
 private:
     void timerCallback() override;

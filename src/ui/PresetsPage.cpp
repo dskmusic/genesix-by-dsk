@@ -2,6 +2,19 @@
 
 namespace gx::ui
 {
+// Factory notes are stored in English; show the known factory sentences in Spanish when the UI is Spanish.
+static juce::String localisedNotes (juce::String n)
+{
+    if (uiEnglish()) return n;
+    const char* pairs[][2] {
+        { "Macros: 1 Brightness, 2 Timbre, 3 Space, 4 Character. Mod wheel opens the filter.", "Macros: 1 Brillo, 2 Timbre, 3 Espacio, 4 Carácter. Mod wheel abre el filtro." },
+        { "Hold a chord: the arpeggiator does the rest.", "Mantén un acorde: el arpegiador hace el resto." },
+        { "Trance gate synced to tempo.", "Trance gate sincronizado al tempo." },
+        { "Step sequencer modulating the timbre.", "Step sequencer modulando el timbre." } };
+    for (auto& p : pairs) n = n.replace (p[0], juce::String::fromUTF8 (p[1]));
+    return n;
+}
+
 void PresetsPage::StringModel::paintListBoxItem (int row, juce::Graphics& g, int w, int h, bool sel)
 {
     if (sel) { g.setColour (col::accent.withAlpha (0.85f)); g.fillRoundedRectangle (1, 1, (float) w - 2, (float) h - 2, 3); }
@@ -183,7 +196,7 @@ void PresetsPage::loadRow (int row)
     if (onLoaded) onLoaded (p);
     const auto& m = ctx.library.all()[(size_t) idx];
     info.setText (m.name + "\n" + m.category + " / " + m.subcategory + L ("\nAutor: ", "\nAuthor: ") + m.author + "\nTags: " + m.tags.joinIntoString (", ")
-                  + L ("\nUsos: ", "\nUses: ") + juce::String (m.uses) + "\n\n" + m.notes, juce::dontSendNotification);
+                  + L ("\nUsos: ", "\nUses: ") + juce::String (m.uses) + "\n\n" + localisedNotes (m.notes), juce::dontSendNotification);
     if (ctx.settings.previewOnSelect())
     {
         ctx.proc.keyboardState.noteOn (1, 60, 0.75f);

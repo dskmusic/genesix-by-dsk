@@ -4,6 +4,12 @@
 
 namespace gx::ui
 {
+// UI clock in seconds. GenesixTool "video" installs a virtual clock so animations follow video time.
+inline std::function<double()>& virtualClock() { static std::function<double()> f; return f; }
+inline double nowSeconds() { auto& f = virtualClock(); return f ? f() : juce::Time::getMillisecondCounterHiRes() * 0.001; }
+// Non-zero: generator seeds start here (reproducible video takes).
+inline uint32_t& forcedSeed() { static uint32_t s = 0; return s; }
+
 // Central look: every colour, radius and font lives here.
 namespace col
 {

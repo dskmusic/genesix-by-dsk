@@ -3,7 +3,7 @@
 
 namespace gx::ui
 {
-static double nowSec() { return juce::Time::getMillisecondCounterHiRes() * 0.001; }
+static double nowSec() { return nowSeconds(); }
 
 // ================================================================ GenerateButton
 void GenerateButton::burst()
@@ -289,7 +289,7 @@ GenRequest GeneratorPage::makeRequest() const
     r.aggression = (float) sliders[2]->getValue();
     r.space = (float) sliders[3]->getValue();
     r.weirdness = (float) sliders[4]->getValue();
-    r.seed = (uint32_t) juce::Random::getSystemRandom().nextInt() ^ (uint32_t) juce::Time::currentTimeMillis();
+    r.seed = forcedSeed() != 0 ? forcedSeed()++ : (uint32_t) juce::Random::getSystemRandom().nextInt() ^ (uint32_t) juce::Time::currentTimeMillis();
     for (auto* l : locks) if (l->getToggleState()) r.locks.insert (l->getProperties()["lock"].toString());
     return r;
 }

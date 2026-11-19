@@ -280,7 +280,7 @@ void OscView::rebuild (float morph)
                 const float pos = morph * (kNumArchetypes - 1);
                 const int k0 = juce::jmin (kNumArchetypes - 2, (int) pos);
                 const float tt = pos - (float) k0;
-                const float drift = (float) juce::Time::getMillisecondCounter() * 0.0004f;
+                const float drift = (float) nowSeconds() * 0.4f;
                 for (int k = 1; k < 24; ++k)
                     y += (a[(size_t) k0][(size_t) k] * (1 - tt) + a[(size_t) k0 + 1][(size_t) k] * tt) * (1.0f + 0.4f * shape * std::sin (drift * (0.5f + k * 0.13f)))
                          * std::sin (kTwoPi * k * sp);

@@ -56,7 +56,7 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
     setSize ((int) (kDesignW * s), (int) (kDesignH * s));
     header->setPresetName (proc.currentMeta.name);
     showPage (0);
-    lastTime = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    lastTime = gx::ui::nowSeconds();
     lastPresetGen = proc.presetGeneration.load();
     startTimerHz (60);
 }
@@ -154,7 +154,7 @@ void GenesixEditor::toast (const juce::String& msg)
     toastLabel.setText (msg, juce::dontSendNotification);
     toastLabel.setVisible (true);
     toastLabel.toFront (false);
-    toastUntil = juce::Time::getMillisecondCounterHiRes() * 0.001 + 2.6;
+    toastUntil = gx::ui::nowSeconds() + 2.6;
 }
 
 void GenesixEditor::refreshAll()
@@ -188,7 +188,7 @@ void GenesixEditor::advanceFrames (double dt)
 
 void GenesixEditor::timerCallback()
 {
-    const double now = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    const double now = gx::ui::nowSeconds();
     const double dt = juce::jlimit (0.0, 0.25, now - lastTime);
     const int anim = settings.animation();
     const double interval = anim == 0 ? 0.0 : anim == 1 ? 1.0 / 15.0 : 0.5;

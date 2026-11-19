@@ -3,11 +3,14 @@
 #include "gen/Generator.h"
 #include "ui/GeneratorPage.h"
 
+int runVideo (int argc, char** argv); // Video.cpp
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI init;
     const juce::String cmd = argc > 1 ? argv[1] : "test";
     if (cmd == "test") return gxtest::runAll();
+    if (cmd == "video") return runVideo (argc, argv);
     if (cmd == "bench")
     {
         // worst-ish case: 16 voices x 8 unison x 4 oscillators of mixed types, both filters, all FX
@@ -70,11 +73,11 @@ int main (int argc, char** argv)
                 p.meta.factory = true;
                 p.meta.uuid = juce::Uuid().toString();
                 p.meta.created = p.meta.modified = juce::Time (2026, 10, 1, 12, 0);
-                juce::String tips = juce::String::fromUTF8 ("Macros: 1 Brillo, 2 Timbre, 3 Espacio, 4 Carácter. Mod wheel abre el filtro.");
-                if (p.params[(size_t) gx::P::arpOn] > 0.5f) tips << juce::String::fromUTF8 (" Mantén un acorde: el arpegiador hace el resto.");
-                if (p.params[(size_t) gx::P::tgOn] > 0.5f) tips << " Trance gate sincronizado al tempo.";
+                juce::String tips = juce::String ("Macros: 1 Brightness, 2 Timbre, 3 Space, 4 Character. Mod wheel opens the filter.");
+                if (p.params[(size_t) gx::P::arpOn] > 0.5f) tips << juce::String (" Hold a chord: the arpeggiator does the rest.");
+                if (p.params[(size_t) gx::P::tgOn] > 0.5f) tips << " Trance gate synced to tempo.";
                 for (int s = 0; s < gx::kNumModSlots; ++s)
-                    if ((int) p.params[(size_t) gx::P::mod (s, gx::P::mSrc)] == gx::msStepSeq) { tips << " Step sequencer modulando el timbre."; break; }
+                    if ((int) p.params[(size_t) gx::P::mod (s, gx::P::mSrc)] == gx::msStepSeq) { tips << " Step sequencer modulating the timbre."; break; }
                 p.meta.notes = tips;
                 accepted.push_back (p);
                 ++k;
