@@ -3,15 +3,17 @@
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- `GenesixTool video <dir>`: scripted 1080p30 product demo rendered from the real editor and engine (frames + audio, mux with ffmpeg).
+### Fixed
+- Factory preset notes were shown in Spanish with the English interface: they are now stored in English and shown in Spanish only when the interface is Spanish.
 
 ## [1.1.0] - 2026-11-19
 ### Added
 - Full English/Spanish interface (all labels, menus, tooltips, dialogs and SFZ warnings). First run follows the system language; switch it in Settings > Idioma / Language (the whole interface is rebuilt instantly, keeping the current page and generator settings).
 - Application icon for the Standalone `.exe`/`.app`, the Windows installer and its uninstaller entry (`branding/`, regenerate with `GenesixTool icon branding`).
-- `GenesixTool video <dir>`: scripted 1080p30 product demo rendered from the real editor and engine (frames + audio, mux with ffmpeg).
 ### Changed
 - The generator history (◀ ▶) now keeps only the current session: it lives in memory, starts empty each time the plugin loads and is no longer written to disk (the old `history.json` is deleted).
-- Factory preset notes are stored in English and shown in Spanish when the interface is Spanish.
 - README screenshots retaken with the English interface (`GenesixTool screenshot <dir> [en|es]`).
 
 ## [1.0.0] - 2026-11-19
