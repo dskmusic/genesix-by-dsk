@@ -1,43 +1,149 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-static juce::AudioProcessorValueTreeState::ParameterLayout makeLayout()
-{
-    juce::AudioProcessorValueTreeState::ParameterLayout l;
-    l.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "master", 1 }, "Master", 0.0f, 1.0f, 0.7f));
-    return l;
-}
-
 GenesixProcessor::GenesixProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "GENESIX", makeLayout())
+      apvts (*this, nullptr, "GENESIX", gx::createLayout())
 {
+    for (auto& d : gx::paramDefs()) raw.push_back (apvts.getRawParameterValue (d.id));
+    snapshot.assign (raw.size(), 0.0f);
+    for (auto& t : userTables) t.store (nullptr);
+    sharedPatterns.write (patterns);
 }
 
-void GenesixProcessor::prepareToPlay (double, int) {}
+GenesixProcessor::~GenesixProcessor() = default;
+
+void GenesixProcessor::prepareToPlay (double sampleRate, int blockSize)
+{
+    engine.prepare (sampleRate, juce::jmax (blockSize, 16));
+    keyboardState.reset();
+}
 
 bool GenesixProcessor::isBusesLayoutSupported (const BusesLayout& l) const
 {
     return l.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
 }
 
-void GenesixProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void GenesixProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals nd;
-    buffer.clear();
+    keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
+    for (size_t i = 0; i < raw.size(); ++i) snapshot[i] = raw[i]->load (std::memory_order_relaxed);
+    sharedPatterns.read (audioPatterns);
+
+    gx::Transport tr;
+    if (auto* ph = getPlayHead())
+        if (auto pos = ph->getPosition())
+        {
+            if (auto bpm = pos->getBpm()) tr.bpm = *bpm;
+            if (auto ppq = pos->getPpqPosition()) tr.ppq = *ppq;
+            tr.playing = pos->getIsPlaying() && pos->getPpqPosition().hasValue();
+        }
+
+    std::array<const gx::Wavetable*, gx::kNumOsc> ut {};
+    for (int i = 0; i < gx::kNumOsc; ++i) ut[(size_t) i] = userTables[(size_t) i].load (std::memory_order_acquire);
+
+    const int total = buffer.getNumSamples();
+    engine.process (buffer, midi, snapshot.data(), audioPatterns, tr, ut, samplePtr.load (std::memory_order_acquire));
+
+    const float* L = buffer.getReadPointer (0);
+    const float* R = buffer.getReadPointer (1);
+    float pl = 0, pr = 0, sq = 0;
+    for (int i = 0; i < total; ++i) { pl = juce::jmax (pl, std::abs (L[i])); pr = juce::jmax (pr, std::abs (R[i])); sq += L[i] * L[i] + R[i] * R[i]; }
+    peakL.store (juce::jmax (pl, peakL.load() * 0.9f));
+    peakR.store (juce::jmax (pr, peakR.load() * 0.9f));
+    rms.store (std::sqrt (sq / juce::jmax (1, total * 2)));
+    pushScope (L, R, total);
+}
+
+void GenesixProcessor::pushScope (const float* L, const float* R, int n)
+{
+    const auto scope = scopeFifo.write (juce::jmin (n, scopeFifo.getFreeSpace()));
+    for (int i = 0; i < scope.blockSize1; ++i) scopeBuf[(size_t) (scope.startIndex1 + i)] = 0.5f * (L[i] + R[i]);
+    for (int i = 0; i < scope.blockSize2; ++i) scopeBuf[(size_t) (scope.startIndex2 + i)] = 0.5f * (L[scope.blockSize1 + i] + R[scope.blockSize1 + i]);
+}
+
+int GenesixProcessor::readScope (float* dest, int maxSamples)
+{
+    const auto scope = scopeFifo.read (juce::jmin (maxSamples, scopeFifo.getNumReady()));
+    for (int i = 0; i < scope.blockSize1; ++i) dest[i] = scopeBuf[(size_t) (scope.startIndex1 + i)];
+    for (int i = 0; i < scope.blockSize2; ++i) dest[scope.blockSize1 + i] = scopeBuf[(size_t) (scope.startIndex2 + i)];
+    return scope.blockSize1 + scope.blockSize2;
+}
+
+void GenesixProcessor::setParamPlain (int index, float plain)
+{
+    if (auto* prm = apvts.getParameter (gx::paramDefs()[(size_t) index].id))
+        prm->setValueNotifyingHost (prm->convertTo0to1 (plain));
+}
+
+void GenesixProcessor::setUserWavetable (int osc, std::unique_ptr<gx::Wavetable> t)
+{
+    userTables[(size_t) osc].store (t.get(), std::memory_order_release);
+    if (t) tableStore.push_back (std::move (t));
+    // ponytail: keep the last 12 tables alive; the audio thread only holds a pointer for one block.
+    while (tableStore.size() > 12)
+    {
+        bool inUse = false;
+        for (auto& u : userTables) inUse |= u.load() == tableStore.front().get();
+        if (inUse) break;
+        tableStore.erase (tableStore.begin());
+    }
+}
+
+void GenesixProcessor::setSample (std::unique_ptr<gx::SampleData> s)
+{
+    samplePtr.store (s.get(), std::memory_order_release);
+    if (s) sampleStore.push_back (std::move (s));
+    while (sampleStore.size() > 4 && sampleStore.front().get() != samplePtr.load()) sampleStore.erase (sampleStore.begin());
+}
+
+void GenesixProcessor::renderOffline (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi, double sampleRate, int blockSize)
+{
+    // separate engine instance: safe to call from the message/worker thread while audio runs
+    auto eng = std::make_unique<gx::Engine>();
+    eng->prepare (sampleRate, blockSize);
+    std::vector<float> snap (raw.size());
+    for (size_t i = 0; i < raw.size(); ++i) snap[i] = raw[i]->load();
+    auto pats = std::make_unique<gx::Patterns> (patterns);
+    std::array<const gx::Wavetable*, gx::kNumOsc> ut {};
+    for (int i = 0; i < gx::kNumOsc; ++i) ut[(size_t) i] = userTables[(size_t) i].load();
+    gx::Transport tr;
+    tr.bpm = 120.0;
+    tr.playing = true;
+    juce::AudioBuffer<float> block (2, blockSize);
+    for (int pos = 0; pos < out.getNumSamples(); pos += blockSize)
+    {
+        const int n = juce::jmin (blockSize, out.getNumSamples() - pos);
+        block.setSize (2, n, false, false, true);
+        juce::MidiBuffer m;
+        m.addEvents (midi, pos, n, -pos);
+        tr.ppq = (double) pos / sampleRate * 2.0;
+        eng->process (block, m, snap.data(), *pats, tr, ut, samplePtr.load());
+        for (int c = 0; c < juce::jmin (2, out.getNumChannels()); ++c) out.copyFrom (c, pos, block, c, 0, n);
+    }
 }
 
 juce::AudioProcessorEditor* GenesixProcessor::createEditor() { return new GenesixEditor (*this); }
 
 void GenesixProcessor::getStateInformation (juce::MemoryBlock& mb)
 {
-    if (auto xml = apvts.copyState().createXml())
-        copyXmlToBinary (*xml, mb);
+    auto state = apvts.copyState();
+    juce::MemoryBlock pm (&patterns, sizeof (patterns));
+    state.setProperty ("patterns_v1", pm.toBase64Encoding(), nullptr);
+    if (auto xml = state.createXml()) copyXmlToBinary (*xml, mb);
 }
 
 void GenesixProcessor::setStateInformation (const void* data, int size)
 {
     if (auto xml = getXmlFromBinary (data, size))
         if (xml->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+        {
+            auto vt = juce::ValueTree::fromXml (*xml);
+            juce::MemoryBlock pm;
+            if (pm.fromBase64Encoding (vt.getProperty ("patterns_v1").toString()) && pm.getSize() == sizeof (gx::Patterns))
+                setPatterns (*static_cast<const gx::Patterns*> (pm.getData()));
+            vt.removeProperty ("patterns_v1", nullptr);
+            apvts.replaceState (vt);
+        }
 }

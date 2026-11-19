@@ -78,7 +78,9 @@ target_link_libraries(Genesix PRIVATE GenesixShared)
 
 # ---- Tool: unit tests, offline render, preset validation, factory bank, SFZ, screenshots ----
 juce_add_console_app(GenesixTool PRODUCT_NAME "GenesixTool")
-target_sources(GenesixTool PRIVATE tests/ToolMain.cpp)
+file(GLOB GENESIX_TOOL_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.h")
+target_sources(GenesixTool PRIVATE ${GENESIX_TOOL_SOURCES})
+target_include_directories(GenesixTool PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 target_link_libraries(GenesixTool PRIVATE GenesixShared)
 
 enable_testing()
