@@ -13,6 +13,9 @@ BACKUP*/
 /*.7z
 /prompt inicial.txt
 BUILD_LOCAL.md
+/COMO PUBLICAR VERSION.md
+/HACER BACKUP.bat
+.Backups/
 
 # ---- Build artifacts ----
 build/
