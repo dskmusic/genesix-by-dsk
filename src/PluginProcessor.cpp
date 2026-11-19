@@ -128,22 +128,16 @@ juce::AudioProcessorEditor* GenesixProcessor::createEditor() { return new Genesi
 
 void GenesixProcessor::getStateInformation (juce::MemoryBlock& mb)
 {
-    auto state = apvts.copyState();
-    juce::MemoryBlock pm (&patterns, sizeof (patterns));
-    state.setProperty ("patterns_v1", pm.toBase64Encoding(), nullptr);
-    if (auto xml = state.createXml()) copyXmlToBinary (*xml, mb);
+    const auto json = gx::Preset::capture (*this).toJson();
+    mb.replaceAll (json.toRawUTF8(), json.getNumBytesAsUTF8());
 }
 
 void GenesixProcessor::setStateInformation (const void* data, int size)
 {
-    if (auto xml = getXmlFromBinary (data, size))
-        if (xml->hasTagName (apvts.state.getType()))
-        {
-            auto vt = juce::ValueTree::fromXml (*xml);
-            juce::MemoryBlock pm;
-            if (pm.fromBase64Encoding (vt.getProperty ("patterns_v1").toString()) && pm.getSize() == sizeof (gx::Patterns))
-                setPatterns (*static_cast<const gx::Patterns*> (pm.getData()));
-            vt.removeProperty ("patterns_v1", nullptr);
-            apvts.replaceState (vt);
-        }
+    gx::Preset p;
+    if (gx::Preset::fromJson (juce::String::fromUTF8 (static_cast<const char*> (data), size), p))
+    {
+        p.applyTo (*this);
+        if (onPresetLoaded) juce::MessageManager::callAsync ([this] { if (onPresetLoaded) onPresetLoaded(); });
+    }
 }

@@ -2,6 +2,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Params.h"
 #include "dsp/Engine.h"
+#include "preset/Preset.h"
 
 class GenesixProcessor : public juce::AudioProcessor
 {
@@ -45,6 +46,8 @@ public:
     float getParam (int index) const { return raw[(size_t) index]->load (std::memory_order_relaxed); }
     void setParamPlain (int index, float plainValue); // notifies host
     gx::Telemetry& telemetry() { return engine.tele; }
+    gx::PresetMeta currentMeta;          // metadata of the loaded preset
+    std::function<void()> onPresetLoaded; // UI refresh hook (message thread)
 
     // Offline rendering helper (tool/tests/SFZ export): resets voices, deterministic.
     void renderOffline (juce::AudioBuffer<float>& out, const juce::MidiBuffer& midi, double sampleRate, int blockSize);
