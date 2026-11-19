@@ -28,9 +28,9 @@ public:
         drawPanel (g, box().toFloat(), 8);
         auto in = box().reduced (16);
         g.setColour (col::text); g.setFont (font (14.0f, true));
-        g.drawText ("EDITOR DE WAVETABLE - OSC " + juce::String (osc + 1), in.removeFromTop (22), juce::Justification::centredLeft);
+        g.drawText (L ("EDITOR DE WAVETABLE - OSC ", "WAVETABLE EDITOR - OSC ") + juce::String (osc + 1), in.removeFromTop (22), juce::Justification::centredLeft);
         g.setColour (col::textDim); g.setFont (font (11.5f));
-        g.drawText ("Dibuja el espectro inicial (A) y final (B): se generan los frames intermedios por morphing aditivo.", in.removeFromTop (18), juce::Justification::centredLeft);
+        g.drawText (L ("Dibuja el espectro inicial (A) y final (B): se generan los frames intermedios por morphing aditivo.", "Draw the start (A) and end (B) spectra: the frames in between are built by additive morphing."), in.removeFromTop (18), juce::Justification::centredLeft);
         for (int i = 0; i < 2; ++i)
         {
             auto r = bars (i).toFloat();
@@ -43,7 +43,7 @@ public:
                 g.fillRect (r.getX() + k * w + 1, r.getBottom() - 4 - h, w - 2, h);
             }
             g.setColour (col::phosphor.withAlpha (0.6f)); g.setFont (monoFont (10));
-            g.drawText (i == 0 ? "A (frame 1)" : juce::String::fromUTF8 ("B (último frame)"), r.reduced (6, 3), juce::Justification::topLeft);
+            g.drawText (i == 0 ? "A (frame 1)" : L ("B (último frame)", "B (last frame)"), r.reduced (6, 3), juce::Justification::topLeft);
         }
     }
     void resized() override
@@ -96,7 +96,7 @@ private:
     }
     void importWav()
     {
-        chooser = std::make_unique<juce::FileChooser> ("Importar wavetable (WAV, ciclos de 2048 muestras)", juce::File(), "*.wav;*.aif;*.aiff;*.flac");
+        chooser = std::make_unique<juce::FileChooser> (L ("Importar wavetable (WAV, ciclos de 2048 muestras)", "Import wavetable (WAV, 2048-sample cycles)"), juce::File(), "*.wav;*.aif;*.aiff;*.flac");
         chooser->launchAsync (juce::FileBrowserComponent::openMode, [this] (const juce::FileChooser& fc)
         {
             auto f = fc.getResult();
@@ -104,7 +104,7 @@ private:
             juce::AudioFormatManager fm;
             fm.registerBasicFormats();
             std::unique_ptr<juce::AudioFormatReader> rd (fm.createReaderFor (f));
-            if (! rd) { if (ctx.toast) ctx.toast ("Formato no soportado"); return; }
+            if (! rd) { if (ctx.toast) ctx.toast (L ("Formato no soportado", "Unsupported format")); return; }
             const int len = (int) std::min<juce::int64> (rd->lengthInSamples, (juce::int64) 2048 * 256);
             juce::AudioBuffer<float> b (1, len);
             rd->read (&b, 0, len, 0, true, false);
@@ -117,12 +117,12 @@ private:
         ctx.proc.setUserWavetable (osc, std::move (t));
         ctx.proc.setParamPlain (P::osc (osc, oType), (float) otWavetable);
         ctx.proc.setParamPlain (P::osc (osc, oTable), (float) numBuiltinTables()); // "User"
-        if (ctx.toast) ctx.toast ("Wavetable de usuario cargada en OSC " + juce::String (osc + 1));
+        if (ctx.toast) ctx.toast (L ("Wavetable de usuario cargada en OSC ", "User wavetable loaded into OSC ") + juce::String (osc + 1));
     }
     Context& ctx;
     int osc;
     std::array<std::array<float, 32>, 2> spec {};
-    juce::TextButton make { "Generar wavetable" }, import { "Importar WAV..." }, close { "Cerrar" };
+    juce::TextButton make { L ("Generar wavetable", "Build wavetable") }, import { L ("Importar WAV...", "Import WAV...") }, close { L ("Cerrar", "Close") };
     juce::Slider frames;
     std::unique_ptr<juce::FileChooser> chooser;
 };
@@ -131,7 +131,7 @@ private:
 class OscPanel : public Box, private juce::Timer
 {
 public:
-    OscPanel (Context& c, int o, std::function<void (int)> openWt) : Box (c, "Oscilador " + juce::String (o + 1), "osc" + juce::String (o + 1)), osc (o)
+    OscPanel (Context& c, int o, std::function<void (int)> openWt) : Box (c, L ("Oscilador ", "Oscillator ") + juce::String (o + 1), "osc" + juce::String (o + 1)), osc (o)
     {
         on = &add<ParamToggle> (c, P::osc (o, oOn), "ON");
         type = &add<ParamCombo> (c, P::osc (o, oType));
@@ -139,10 +139,10 @@ public:
         noise = &add<ParamCombo> (c, P::osc (o, oNoise));
         algo = &add<ParamCombo> (c, P::osc (o, oFmAlgo));
         view = &add<OscView> (c.proc, o);
-        edit = &add<juce::TextButton> ("Editar WT");
+        edit = &add<juce::TextButton> (L ("Editar WT", "Edit WT"));
         edit->onClick = [openWt, o] { openWt (o); };
-        loadSmp = &add<juce::TextButton> ("Cargar sample...");
-        loadSmp->setTooltip (juce::String::fromUTF8 ("Carga un WAV/AIFF/FLAC (mono, máx. 10 s, nota raíz C4). Tipo de ruido 'Sample'. Shape > 50 % = loop."));
+        loadSmp = &add<juce::TextButton> (L ("Cargar sample...", "Load sample..."));
+        loadSmp->setTooltip (L ("Carga un WAV/AIFF/FLAC (mono, máx. 10 s, nota raíz C4). Tipo de ruido 'Sample'. Shape > 50 % = loop.", "Loads a WAV/AIFF/FLAC (mono, max 10 s, root note C4). Noise type 'Sample'. Shape > 50 % = loop."));
         loadSmp->onClick = [this] { loadSample(); };
         for (int f : { oLevel, oPan, oOct, oSemi, oFine, oMorph, oShape, oSync, oFold })
             common.push_back (&add<ParamKnob> (c, P::osc (o, f)));
@@ -182,7 +182,7 @@ private:
     }
     void loadSample()
     {
-        chooser = std::make_unique<juce::FileChooser> ("Cargar sample", juce::File(), "*.wav;*.aif;*.aiff;*.flac");
+        chooser = std::make_unique<juce::FileChooser> (L ("Cargar sample", "Load sample"), juce::File(), "*.wav;*.aif;*.aiff;*.flac");
         chooser->launchAsync (juce::FileBrowserComponent::openMode, [this] (const juce::FileChooser& fc)
         {
             auto f = fc.getResult();
@@ -190,7 +190,7 @@ private:
             juce::AudioFormatManager fm;
             fm.registerBasicFormats();
             std::unique_ptr<juce::AudioFormatReader> rd (fm.createReaderFor (f));
-            if (! rd) { if (ctx.toast) ctx.toast ("Formato no soportado"); return; }
+            if (! rd) { if (ctx.toast) ctx.toast (L ("Formato no soportado", "Unsupported format")); return; }
             const int len = (int) std::min<juce::int64> (rd->lengthInSamples, (juce::int64) (rd->sampleRate * 10.0));
             juce::AudioBuffer<float> b ((int) rd->numChannels, len);
             rd->read (&b, 0, len, 0, true, true);
@@ -204,7 +204,7 @@ private:
             ctx.proc.setSample (std::move (s));
             ctx.proc.setParamPlain (P::osc (osc, oType), (float) otNoise);
             ctx.proc.setParamPlain (P::osc (osc, oNoise), (float) ntSample);
-            if (ctx.toast) ctx.toast ("Sample cargado: " + f.getFileName());
+            if (ctx.toast) ctx.toast (L ("Sample cargado: ", "Sample loaded: ") + f.getFileName());
         });
     }
     int osc, lastType = -1;
@@ -217,7 +217,7 @@ private:
 class OscTab : public juce::Component
 {
 public:
-    explicit OscTab (Context& c) : voice (c, "Voz", "global")
+    explicit OscTab (Context& c) : voice (c, L ("Voz", "Voice"), "global")
     {
         for (int o = 0; o < kNumOsc; ++o)
         {
@@ -260,12 +260,12 @@ private:
 class FilterTab : public juce::Component
 {
 public:
-    explicit FilterTab (Context& c) : view (c.proc), routing (c, "Enrutado", "global"), env2 (c, "Envolvente de filtro (Env 2)", "env2")
+    explicit FilterTab (Context& c) : view (c.proc), routing (c, L ("Enrutado", "Routing"), "global"), env2 (c, L ("Envolvente de filtro (Env 2)", "Filter envelope (Env 2)"), "env2")
     {
         addAndMakeVisible (view);
         for (int f = 0; f < kNumFilters; ++f)
         {
-            auto* b = boxes.add (new Box (c, "Filtro " + juce::String (f + 1), "filter" + juce::String (f + 1)));
+            auto* b = boxes.add (new Box (c, L ("Filtro ", "Filter ") + juce::String (f + 1), "filter" + juce::String (f + 1)));
             b->accent = f == 0 ? col::accent : col::accent2;
             auto* on = &b->add<ParamToggle> (c, P::filt (f, fOn), "ON");
             auto* ty = &b->add<ParamCombo> (c, P::filt (f, fType));
@@ -344,7 +344,7 @@ private:
 class ChipBox : public Section, public Animated
 {
 public:
-    ChipBox (Context& c) : Section (c, "Fuentes (arrastra a un knob)")
+    ChipBox (Context& c) : Section (c, L ("Fuentes (arrastra a un knob)", "Sources (drag onto a knob)"))
     {
         for (int sIdx = 1; sIdx < msNumSources; ++sIdx) { auto* ch = chips.add (new SourceChip (sIdx)); addAndMakeVisible (ch); }
         accent = col::accent3;
@@ -375,11 +375,11 @@ private:
 class ModTab : public juce::Component
 {
 public:
-    explicit ModTab (Context& c) : macros (c, "Macros", "macros"), chips (c), matrix (c, juce::String::fromUTF8 ("Matriz de modulación"), "matrix")
+    explicit ModTab (Context& c) : macros (c, "Macros", "macros"), chips (c), matrix (c, L ("Matriz de modulación", "Modulation matrix"), "matrix")
     {
         for (int e = 0; e < kNumEnv; ++e)
         {
-            auto* b = envs.add (new Box (c, "Env " + juce::String (e + 1) + (e == 0 ? " (amp)" : e == 1 ? " (filtro)" : ""), "env" + juce::String (e + 1)));
+            auto* b = envs.add (new Box (c, "Env " + juce::String (e + 1) + (e == 0 ? " (amp)" : e == 1 ? L (" (filtro)", " (filter)") : ""), "env" + juce::String (e + 1)));
             auto* ev = &b->add<EnvView> (c.proc, e);
             std::vector<juce::Component*> ks;
             for (int fld : { eDelay, eAttack, eHold, eDecay, eSustain, eRelease, eACurve, eDCurve, eRCurve }) ks.push_back (&b->add<ParamKnob> (c, P::env (e, fld)));
@@ -451,9 +451,9 @@ private:
 class RhythmTab : public juce::Component
 {
 public:
-    explicit RhythmTab (Context& c) : arp (c, "Arpegiador", "arp"), gate (c, "Trance Gate", "gate"), seq (c, juce::String::fromUTF8 ("Step Sequencer (fuente de modulación)"), "seq"), chord (c, "Acordes / Strum / Humanize", "global")
+    explicit RhythmTab (Context& c) : arp (c, L ("Arpegiador", "Arpeggiator"), "arp"), gate (c, "Trance Gate", "gate"), seq (c, L ("Step Sequencer (fuente de modulación)", "Step Sequencer (modulation source)"), "seq"), chord (c, L ("Acordes / Strum / Humanize", "Chords / Strum / Humanize"), "global")
     {
-        auto lane = [&c] (Box& b, const char* name, StepGrid::Getter g, float lo, float hi, bool q, int stepsParam, int kind, juce::Colour colr, int maxS)
+        auto lane = [&c] (Box& b, const juce::String& name, StepGrid::Getter g, float lo, float hi, bool q, int stepsParam, int kind, juce::Colour colr, int maxS)
         {
             auto& sg = b.add<StepGrid> (c.proc, std::move (g), maxS, lo, hi, stepsParam, kind);
             sg.label = name; sg.quantize = q; sg.colour = colr;
@@ -467,11 +467,11 @@ public:
         std::vector<juce::Component*> ak;
         for (int p : { P::arpOct, P::arpGate, P::arpSwing, P::arpSteps }) ak.push_back (&arp.add<ParamKnob> (c, p));
         std::vector<juce::Component*> lanes {
-            lane (arp, "PASO ON/OFF", [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].on; }, 0, 1, true, P::arpSteps, 0, col::accent, kMaxArpSteps),
-            lane (arp, "VELOCIDAD", [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].vel; }, 0, 1, false, P::arpSteps, 0, col::accent2, kMaxArpSteps),
+            lane (arp, L ("PASO ON/OFF", "STEP ON/OFF"), [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].on; }, 0, 1, true, P::arpSteps, 0, col::accent, kMaxArpSteps),
+            lane (arp, L ("VELOCIDAD", "VELOCITY"), [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].vel; }, 0, 1, false, P::arpSteps, 0, col::accent2, kMaxArpSteps),
             lane (arp, "GATE", [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].gate; }, 0.05f, 2, false, P::arpSteps, 0, col::accent3, kMaxArpSteps),
             lane (arp, "RATCHET", [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].ratchet; }, 1, 4, true, P::arpSteps, 0, col::accent, kMaxArpSteps),
-            lane (arp, "PROBABILIDAD", [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].prob; }, 0, 1, false, P::arpSteps, 0, col::accent2, kMaxArpSteps),
+            lane (arp, L ("PROBABILIDAD", "PROBABILITY"), [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].prob; }, 0, 1, false, P::arpSteps, 0, col::accent2, kMaxArpSteps),
             lane (arp, "TRANSPOSE", [] (Patterns& pt, int i) -> float& { return pt.arp[(size_t) i].transpose; }, -12, 12, true, P::arpSteps, 0, col::accent3, kMaxArpSteps) };
         arp.layout = [top, ak, lanes] (juce::Rectangle<int> r)
         {
@@ -484,7 +484,7 @@ public:
         std::vector<juce::Component*> gt { &gate.add<ParamToggle> (c, P::tgOn, "GATE ON"), &gate.add<ParamCombo> (c, P::tgRate) };
         std::vector<juce::Component*> gk;
         for (int p : { P::tgSteps, P::tgDepth, P::tgAttack, P::tgRelease }) gk.push_back (&gate.add<ParamKnob> (c, p));
-        auto* gl = lane (gate, "NIVEL POR PASO", [] (Patterns& pt, int i) -> float& { return pt.gate[(size_t) i]; }, 0, 1, false, P::tgSteps, 1, col::accent3, kMaxGateSteps);
+        auto* gl = lane (gate, L ("NIVEL POR PASO", "LEVEL PER STEP"), [] (Patterns& pt, int i) -> float& { return pt.gate[(size_t) i]; }, 0, 1, false, P::tgSteps, 1, col::accent3, kMaxGateSteps);
         gate.layout = [gt, gk, gl] (juce::Rectangle<int> r)
         {
             auto t = r.removeFromTop (24);
@@ -495,7 +495,7 @@ public:
         auto* sr = &seq.add<ParamCombo> (c, P::seqRate);
         std::vector<juce::Component*> sk;
         for (int p : { P::seqSteps, P::seqGlide }) sk.push_back (&seq.add<ParamKnob> (c, p));
-        auto* sl = lane (seq, "VALOR (-1..+1)", [] (Patterns& pt, int i) -> float& { return pt.seq[(size_t) i]; }, -1, 1, false, P::seqSteps, 2, col::accent, kMaxSeqSteps);
+        auto* sl = lane (seq, L ("VALOR (-1..+1)", "VALUE (-1..+1)"), [] (Patterns& pt, int i) -> float& { return pt.seq[(size_t) i]; }, -1, 1, false, P::seqSteps, 2, col::accent, kMaxSeqSteps);
         seq.layout = [sr, sk, sl] (juce::Rectangle<int> r)
         {
             auto t = r.removeFromTop (70);
@@ -527,7 +527,7 @@ static const int kFxOnParam[kNumFx] { P::distOn, P::choOn, P::flaOn, P::phaOn, P
 class FxOrderList : public Section, private juce::Timer
 {
 public:
-    FxOrderList (Context& c) : Section (c, "Orden de efectos") { startTimerHz (8); }
+    FxOrderList (Context& c) : Section (c, L ("Orden de efectos", "Effect order")) { startTimerHz (8); }
     void paint (juce::Graphics& g) override
     {
         Section::paint (g);
@@ -606,7 +606,7 @@ private:
 // ================================================================ EditorPage
 EditorPage::EditorPage (Context& c) : Page (c)
 {
-    const char* names[] { "OSC", "FILTROS", "MOD", "ARP / GATE / SEQ", "FX" };
+    const juce::String names[] { "OSC", L ("FILTROS", "FILTERS"), "MOD", "ARP / GATE / SEQ", "FX" };
     for (int i = 0; i < 5; ++i)
     {
         auto* b = subTabs.add (new juce::TextButton (names[i]));

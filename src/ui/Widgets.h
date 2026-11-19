@@ -18,7 +18,12 @@ public:
     void setAiMessages (bool b) { props->setValue ("aiMessages", b); props->saveIfNeeded(); }
     int historyLimit() const { return props->getIntValue ("historyLimit", 200); }
     void setHistoryLimit (int n) { props->setValue ("historyLimit", juce::jlimit (10, 2000, n)); props->saveIfNeeded(); }
-    juce::String messageLanguage() const { return props->getValue ("msgLang", "es"); }
+    // UI + AI-message language. First run: follows the OS language (Spanish -> "es", anything else -> "en").
+    juce::String messageLanguage() const
+    {
+        if (forcedLanguage().isNotEmpty()) return forcedLanguage();
+        return props->getValue ("msgLang", juce::SystemStats::getUserLanguage().startsWithIgnoreCase ("es") ? "es" : "en");
+    }
     void setMessageLanguage (const juce::String& l) { props->setValue ("msgLang", l); props->saveIfNeeded(); }
     bool previewOnSelect() const { return props->getBoolValue ("preview", true); }
     void setPreviewOnSelect (bool b) { props->setValue ("preview", b); props->saveIfNeeded(); }

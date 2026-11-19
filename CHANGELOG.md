@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+### Added
+- Full English/Spanish interface (all labels, menus, tooltips, dialogs and SFZ warnings). First run follows the system language; switch it in Settings > Idioma / Language.
+### Changed
+- README screenshots retaken with the English interface (`GenesixTool screenshot <dir> [en|es]`).
+
 ## [1.0.0] - 2026-11-19
 ### Added
 - **GENERADOR**: rule-based smart preset generator (11 categories, 50+ archetypes, 5 character sliders, section locks, mutate, blend), offline validation with automatic level control, animated "AI" console (ES/EN, 54+ messages per category), parameter resolve/assemble animation, live oscilloscope/spectrum/VU/LED matrix/circuit bus, persistent browser-like history (◀ ▶, Alt+←/→).

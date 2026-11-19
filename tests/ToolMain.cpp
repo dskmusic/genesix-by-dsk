@@ -141,6 +141,7 @@ int main (int argc, char** argv)
         // GenesixTool screenshot <outdir>
         const juce::File out = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "docs/screenshots");
         out.createDirectory();
+        gx::forcedLanguage() = argc > 3 ? argv[3] : "en"; // GenesixTool screenshot <outdir> [en|es]
         GenesixProcessor p;
         p.prepareToPlay (48000, 512);
         std::unique_ptr<juce::AudioProcessorEditor> ed (p.createEditor());

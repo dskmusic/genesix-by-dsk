@@ -8,15 +8,15 @@ namespace gx::ui
 class SfzPanel : public Box, private juce::Timer
 {
 public:
-    explicit SfzPanel (Context& c) : Box (c, "Exportar a SFZ (multisample)")
+    explicit SfzPanel (Context& c) : Box (c, L ("Exportar a SFZ (multisample)", "Export to SFZ (multisample)"))
     {
         auto addCombo = [this] (juce::ComboBox& cb, juce::StringArray items, int sel)
         { cb.addItemList (items, 1); cb.setSelectedItemIndex (sel, juce::dontSendNotification); addAndMakeVisible (cb); };
-        addCombo (step, { "1 semitono", "2 semitonos", "3 semitonos", "4 semitonos", "6 semitonos", "12 semitonos" }, 2);
-        addCombo (layers, { "1 capa", "2 capas", "3 capas", "4 capas", "5 capas", "6 capas", "7 capas", "8 capas" }, 1);
+        addCombo (step, { L ("1 semitono", "1 semitone"), L ("2 semitonos", "2 semitones"), L ("3 semitonos", "3 semitones"), L ("4 semitonos", "4 semitones"), L ("6 semitonos", "6 semitones"), L ("12 semitonos", "12 semitones") }, 2);
+        addCombo (layers, { L ("1 capa", "1 layer"), L ("2 capas", "2 layers"), L ("3 capas", "3 layers"), L ("4 capas", "4 layers"), L ("5 capas", "5 layers"), L ("6 capas", "6 layers"), L ("7 capas", "7 layers"), L ("8 capas", "8 layers") }, 1);
         addCombo (rate, { "44.1 kHz", "48 kHz" }, 0);
         addCombo (bits, { "24 bit", "16 bit" }, 0);
-        addCombo (source, { "Preset actual", "Lote: presets favoritos", juce::String::fromUTF8 ("Lote: categoría del preset actual"), "Lote: todos los presets de usuario" }, 0);
+        addCombo (source, { L ("Preset actual", "Current preset"), L ("Lote: presets favoritos", "Batch: favourite presets"), L ("Lote: categoría del preset actual", "Batch: current preset's category"), L ("Lote: todos los presets de usuario", "Batch: all user presets") }, 0);
         auto addSlider = [this] (juce::Slider& s, double lo, double hi, double st, double v, const juce::String& suffix)
         {
             s.setRange (lo, hi, st); s.setValue (v, juce::dontSendNotification);
@@ -58,9 +58,9 @@ public:
 private:
     std::vector<std::pair<juce::String, juce::Component*>> labels()
     {
-        return { { "Muestrear cada", &step }, { "Capas de velocidad", &layers }, { "Frecuencia", &rate }, { "Profundidad", &bits },
-                 { "Nota inferior", &lowNote }, { "Nota superior", &highNote }, { juce::String::fromUTF8 ("Duración nota"), &noteLen },
-                 { "Cola de release", &tail }, { "Crossfade del loop", &xfade }, { "Origen", &source } };
+        return { { L ("Muestrear cada", "Sample every"), &step }, { L ("Capas de velocidad", "Velocity layers"), &layers }, { L ("Frecuencia", "Sample rate"), &rate }, { L ("Profundidad", "Bit depth"), &bits },
+                 { L ("Nota inferior", "Lowest note"), &lowNote }, { L ("Nota superior", "Highest note"), &highNote }, { L ("Duración nota", "Note length"), &noteLen },
+                 { L ("Cola de release", "Release tail"), &tail }, { L ("Crossfade del loop", "Loop crossfade"), &xfade }, { L ("Origen", "Source"), &source } };
     }
     void doLayout (juce::Rectangle<int> r)
     {
@@ -110,8 +110,8 @@ private:
             if (src == 3) f.type = PresetFilter::User;
             for (int i : ctx.library.query (f)) { Preset p; if (ctx.library.load (i, p)) list.push_back (p); }
         }
-        if (list.empty()) { status.setText ("No hay presets que exportar con ese origen.", juce::dontSendNotification); return; }
-        chooser = std::make_unique<juce::FileChooser> ("Carpeta de destino del SFZ", Library::defaultRoot().getChildFile ("SFZ"));
+        if (list.empty()) { status.setText (L ("No hay presets que exportar con ese origen.", "No presets to export from that source."), juce::dontSendNotification); return; }
+        chooser = std::make_unique<juce::FileChooser> (L ("Carpeta de destino del SFZ", "SFZ destination folder"), Library::defaultRoot().getChildFile ("SFZ"));
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
             [this, list = std::move (list)] (const juce::FileChooser& fc) mutable
             {
@@ -128,7 +128,7 @@ private:
         exportBtn.setEnabled (false); cancelBtn.setEnabled (true);
         const auto opts = options();
         const auto warns = SfzExporter::unrepresentable (list.front());
-        status.setText (juce::String::fromUTF8 ("Renderizando… ") + (warns.isEmpty() ? juce::String() : "\nAvisos:\n- " + warns.joinIntoString ("\n- ")), juce::dontSendNotification);
+        status.setText (L ("Renderizando… ", "Rendering… ") + (warns.isEmpty() ? juce::String() : L ("\nAvisos:\n- ", "\nWarnings:\n- ") + warns.joinIntoString ("\n- ")), juce::dontSendNotification);
         worker = std::thread ([this, list = std::move (list), dir, opts]
         {
             juce::String msg;
@@ -139,8 +139,8 @@ private:
                 if (r.ok) { ++ok; lastFile = r.sfzFile.getFullPathName(); warnings = r.warnings.joinIntoString ("\n- "); }
                 else if (! r.cancelled) msg << r.error << "\n";
             }
-            resultText = cancel.load() ? juce::String ("Exportación cancelada.") : juce::String (ok) + " instrumento(s) SFZ exportados.\n" + lastFile + "\n" + msg
-                                                                                    + (warnings.isNotEmpty() ? "\nNo representable en SFZ:\n- " + warnings : juce::String());
+            resultText = cancel.load() ? L ("Exportación cancelada.", "Export cancelled.") : juce::String (ok) + L (" instrumento(s) SFZ exportados.\n", " SFZ instrument(s) exported.\n") + lastFile + "\n" + msg
+                                                                                    + (warnings.isNotEmpty() ? L ("\nNo representable en SFZ:\n- ", "\nNot representable in SFZ:\n- ") + warnings : juce::String());
             running = false;
         });
     }
@@ -173,8 +173,8 @@ private:
 
     juce::ComboBox step, layers, rate, bits, source;
     juce::Slider lowNote, highNote, noteLen, tail, xfade;
-    juce::ToggleButton loop { juce::String::fromUTF8 ("Loop sin clicks (crossfade) en sonidos sostenidos") };
-    juce::TextButton exportBtn { "Exportar SFZ..." }, cancelBtn { "Cancelar" };
+    juce::ToggleButton loop { L ("Loop sin clicks (crossfade) en sonidos sostenidos", "Click-free loop (crossfade) on sustained sounds") };
+    juce::TextButton exportBtn { L ("Exportar SFZ...", "Export SFZ...") }, cancelBtn { L ("Cancelar", "Cancel") };
     juce::Label status;
     std::unique_ptr<juce::FileChooser> chooser;
     std::thread worker;

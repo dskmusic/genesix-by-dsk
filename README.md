@@ -98,6 +98,7 @@ Its main screen is a **smart preset generator**: pick a category, shape the char
 ### Design
 - Custom FL-Studio-inspired look: charcoal theme, orange and green accents, bevelled panels, knobs with value and modulation rings, and value tooltips.
 - Vector UI, **resizable and scalable from 50% to 200%**. The whole look lives in one theme module.
+- **English and Spanish interface**: picked automatically from the system language on first run, switchable in Settings.
 
 ## Screenshots
 

@@ -121,7 +121,7 @@ void Spectrum::paint (juce::Graphics& g)
     }
     g.setColour (col::phosphor.withAlpha (0.55f));
     g.setFont (monoFont (10.0f));
-    g.drawText ("ESPECTRO", r.reduced (8, 4), juce::Justification::topLeft);
+    g.drawText (L ("ESPECTRO", "SPECTRUM"), r.reduced (8, 4), juce::Justification::topLeft);
 }
 
 // ---------------------------------------------------------------- VuMeter
@@ -461,7 +461,7 @@ void LfoView::paint (juce::Graphics& g)
     {
         g.setColour (col::textDim);
         g.setFont (font (10.0f));
-        g.drawText (juce::String::fromUTF8 ("dibuja con el ratón"), in, juce::Justification::bottomLeft);
+        g.drawText (L ("dibuja con el ratón", "draw with the mouse"), in, juce::Justification::bottomLeft);
     }
 }
 

@@ -38,7 +38,7 @@ public:
     std::function<void (int delta)> onPresetStep;
     std::function<void()> onPresetNameClick, onAbout, onAB, onUndo, onRedo;
     juce::TextButton abButton { "A" };
-    juce::TextButton undoButton { "Deshacer" }, redoButton { "Rehacer" };
+    juce::TextButton undoButton { L ("Deshacer", "Undo") }, redoButton { L ("Rehacer", "Redo") };
 private:
     Context& ctx;
     Logo logo;
@@ -113,9 +113,9 @@ private:
     } catModel, subModel;
     juce::OwnedArray<juce::TextButton> tagButtons;
     juce::ComboBox typeBox, sortBox, authorBox, folderBox;
-    juce::ToggleButton favOnly { "Favoritos" };
-    juce::TextButton saveBtn { "Guardar" }, saveAsBtn { "Guardar como" }, importBtn { "Importar" }, exportBtn { "Exportar banco" },
-                     prevBtn { "Anterior" }, nextBtn { "Siguiente" }, folderBtn { "Nueva carpeta" }, rescanBtn { "Reescanear" };
+    juce::ToggleButton favOnly { L ("Favoritos", "Favourites") };
+    juce::TextButton saveBtn { L ("Guardar", "Save") }, saveAsBtn { L ("Guardar como", "Save as") }, importBtn { L ("Importar", "Import") }, exportBtn { L ("Exportar banco", "Export bank") },
+                     prevBtn { L ("Anterior", "Previous") }, nextBtn { L ("Siguiente", "Next") }, folderBtn { L ("Nueva carpeta", "New folder") }, rescanBtn { L ("Reescanear", "Rescan") };
     juce::Label info;
     std::vector<int> shown;
     bool syncingSelection = false;
@@ -130,7 +130,7 @@ public:
     void paint (juce::Graphics&) override;
     std::unique_ptr<juce::Component> sfzPanel; // created by the SFZ module
 private:
-    juce::TextButton exportPreset { "Exportar preset .genesix" }, importPreset { "Importar preset" };
+    juce::TextButton exportPreset { L ("Exportar preset .genesix", "Export .genesix preset") }, importPreset { L ("Importar preset", "Import preset") };
     std::unique_ptr<juce::FileChooser> chooser;
 };
 
@@ -144,8 +144,8 @@ public:
     void paint (juce::Graphics&) override;
 private:
     juce::ComboBox scaleBox, animBox, langBox;
-    juce::ToggleButton aiMsgs { "Mensajes de la IA al generar" }, preview { "Previsualizar al seleccionar preset" };
+    juce::ToggleButton aiMsgs { L ("Mensajes de la IA al generar", "AI messages while generating") }, preview { L ("Previsualizar al seleccionar preset", "Preview on preset select") };
     juce::Slider historyLimit;
-    juce::TextButton openFolder { "Abrir carpeta de presets" }, clearLearn { "Borrar asignaciones MIDI Learn" }, aboutBtn { "Acerca de Genesix" };
+    juce::TextButton openFolder { L ("Abrir carpeta de presets", "Open presets folder") }, clearLearn { L ("Borrar asignaciones MIDI Learn", "Clear MIDI Learn assignments") }, aboutBtn { L ("Acerca de Genesix", "About Genesix") };
 };
 }

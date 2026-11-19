@@ -187,7 +187,7 @@ void ParamKnob::itemDropped (const SourceDetails& d)
             return;
         }
     }
-    if (ctx.toast) ctx.toast ("Matriz llena: libera un slot");
+    if (ctx.toast) ctx.toast (L ("Matriz llena: libera un slot", "Matrix full: free a slot"));
 }
 
 void ParamKnob::mouseDown (const juce::MouseEvent& e)
@@ -201,8 +201,8 @@ void ParamKnob::showMenu()
     const auto& d = paramDefs()[(size_t) index];
     m.addSectionHeader (d.name);
     m.addItem (1, "MIDI Learn");
-    m.addItem (2, "Valor por defecto");
-    if (d.destIndex > 0) m.addItem (3, "Quitar modulaciones");
+    m.addItem (2, L ("Valor por defecto", "Default value"));
+    if (d.destIndex > 0) m.addItem (3, L ("Quitar modulaciones", "Remove modulations"));
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (this), [this, dest = d.destIndex, def = d.def] (int r)
     {
         if (r == 1 && ctx.startMidiLearn) ctx.startMidiLearn (index);
@@ -254,12 +254,12 @@ void Section::mouseDown (const juce::MouseEvent& e)
 {
     if (! e.mods.isPopupMenu() || group.isEmpty() || e.y > 24) return;
     juce::PopupMenu m;
-    m.addItem (1, "Copiar " + title);
-    m.addItem (2, "Pegar en " + title);
+    m.addItem (1, L ("Copiar ", "Copy ") + title);
+    m.addItem (2, L ("Pegar en ", "Paste into ") + title);
     m.showMenuAsync ({}, [this] (int r)
     {
-        if (r == 1) { copySection (ctx.proc, group); if (ctx.toast) ctx.toast (title + " copiado"); }
-        if (r == 2 && ! pasteSection (ctx.proc, group) && ctx.toast) ctx.toast ("El portapapeles no es compatible con " + title);
+        if (r == 1) { copySection (ctx.proc, group); if (ctx.toast) ctx.toast (title + L (" copiado", " copied")); }
+        if (r == 2 && ! pasteSection (ctx.proc, group) && ctx.toast) ctx.toast (L ("El portapapeles no es compatible con ", "Clipboard is not compatible with ") + title);
     });
 }
 

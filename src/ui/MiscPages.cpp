@@ -82,7 +82,7 @@ void Logo::paint (juce::Graphics& g)
 Header::Header (Context& c, std::function<void (int)> onTab) : ctx (c), tabCb (std::move (onTab))
 {
     addAndMakeVisible (logo);
-    const char* names[] { "GENERADOR", "PRESETS", "EDITOR", "EXPORTAR", "AJUSTES" };
+    const juce::String names[] { L ("GENERADOR", "GENERATOR"), "PRESETS", "EDITOR", L ("EXPORTAR", "EXPORT"), L ("AJUSTES", "SETTINGS") };
     for (int i = 0; i < 5; ++i)
     {
         auto* b = tabs.add (new juce::TextButton (names[i]));
@@ -91,11 +91,11 @@ Header::Header (Context& c, std::function<void (int)> onTab) : ctx (c), tabCb (s
         addAndMakeVisible (b);
     }
     for (auto* b : { &prev, &next, &about, &abButton, &undoButton, &redoButton }) addAndMakeVisible (b);
-    prev.setTooltip ("Preset anterior");
-    next.setTooltip ("Preset siguiente");
-    abButton.setTooltip ("Comparar A/B");
-    undoButton.setTooltip ("Deshacer (Ctrl+Z)");
-    redoButton.setTooltip ("Rehacer (Ctrl+Y)");
+    prev.setTooltip (L ("Preset anterior", "Previous preset"));
+    next.setTooltip (L ("Preset siguiente", "Next preset"));
+    abButton.setTooltip (L ("Comparar A/B", "Compare A/B"));
+    undoButton.setTooltip (L ("Deshacer (Ctrl+Z)", "Undo (Ctrl+Z)"));
+    redoButton.setTooltip (L ("Rehacer (Ctrl+Y)", "Redo (Ctrl+Y)"));
     prev.onClick = [this] { if (onPresetStep) onPresetStep (-1); };
     next.onClick = [this] { if (onPresetStep) onPresetStep (1); };
     about.onClick = [this] { if (onAbout) onAbout(); };
@@ -176,12 +176,14 @@ void AboutOverlay::paint (juce::Graphics& g)
     g.drawText ("by DSK  -  version " GENESIX_VERSION, in.removeFromTop (22), juce::Justification::centred);
     g.setColour (col::text);
     g.setFont (font (13.0f));
-    g.drawFittedText (juce::String::fromUTF8 ("Sintetizador freeware de DSK Music.\nMotor de síntesis, generador inteligente de presets y diseño: DSK Music.\n"
-                      "Construido con JUCE (GPLv3) y el VST3 SDK (MIT).\nLicencia: GNU GPL v3."),
+    g.drawFittedText (L ("Sintetizador freeware de DSK Music.\nMotor de síntesis, generador inteligente de presets y diseño: DSK Music.\n"
+                         "Construido con JUCE (GPLv3) y el VST3 SDK (MIT).\nLicencia: GNU GPL v3.",
+                         "Freeware synthesizer by DSK Music.\nSynthesis engine, smart preset generator and design: DSK Music.\n"
+                         "Built with JUCE (GPLv3) and the VST3 SDK (MIT).\nLicense: GNU GPL v3."),
                       in.removeFromTop (90).toNearestInt(), juce::Justification::centred, 5);
     g.setColour (col::textDim);
     g.setFont (font (11.0f));
-    g.drawText ("Clic para cerrar", box.removeFromBottom (24), juce::Justification::centred);
+    g.drawText (L ("Clic para cerrar", "Click to close"), box.removeFromBottom (24), juce::Justification::centred);
 }
 
 void AboutOverlay::resized()
@@ -197,24 +199,24 @@ ExportPage::ExportPage (Context& c) : Page (c)
     addAndMakeVisible (importPreset);
     exportPreset.onClick = [this]
     {
-        chooser = std::make_unique<juce::FileChooser> ("Exportar preset", Library::defaultRoot().getChildFile (ctx.proc.currentMeta.name + ".genesix"), "*.genesix");
+        chooser = std::make_unique<juce::FileChooser> (L ("Exportar preset", "Export preset"), Library::defaultRoot().getChildFile (ctx.proc.currentMeta.name + ".genesix"), "*.genesix");
         chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting, [this] (const juce::FileChooser& fc)
         {
             auto f = fc.getResult();
             if (f == juce::File()) return;
             auto p = Preset::capture (ctx.proc);
-            if (p.saveTo (f.withFileExtension ("genesix")) && ctx.toast) ctx.toast ("Exportado: " + f.getFileName());
+            if (p.saveTo (f.withFileExtension ("genesix")) && ctx.toast) ctx.toast (L ("Exportado: ", "Exported: ") + f.getFileName());
         });
     };
     importPreset.onClick = [this]
     {
-        chooser = std::make_unique<juce::FileChooser> ("Importar preset o banco", Library::defaultRoot(), "*.genesix;*.genesixbank");
+        chooser = std::make_unique<juce::FileChooser> (L ("Importar preset o banco", "Import preset or bank"), Library::defaultRoot(), "*.genesix;*.genesixbank");
         chooser->launchAsync (juce::FileBrowserComponent::openMode, [this] (const juce::FileChooser& fc)
         {
             auto f = fc.getResult();
             if (f == juce::File()) return;
             const int n = ctx.library.importFile (f);
-            if (ctx.toast) ctx.toast (juce::String (n) + " preset(s) importados a la biblioteca");
+            if (ctx.toast) ctx.toast (juce::String (n) + L (" preset(s) importados a la biblioteca", " preset(s) imported into the library"));
         });
     };
 }
@@ -225,10 +227,10 @@ void ExportPage::paint (juce::Graphics& g)
     drawPanel (g, r.removeFromTop (110).toFloat());
     g.setColour (col::text);
     g.setFont (font (15.0f, true));
-    g.drawText ("FORMATO PROPIO .GENESIX", getLocalBounds().reduced (26, 20).removeFromTop (20), juce::Justification::centredLeft);
+    g.drawText (L ("FORMATO PROPIO .GENESIX", "NATIVE .GENESIX FORMAT"), getLocalBounds().reduced (26, 20).removeFromTop (20), juce::Justification::centredLeft);
     g.setColour (col::textDim);
     g.setFont (font (12.0f));
-    g.drawText ("JSON versionado con wavetables y samples incrustados, patrones y metadatos.", getLocalBounds().reduced (26, 44).removeFromTop (18), juce::Justification::centredLeft);
+    g.drawText (L ("JSON versionado con wavetables y samples incrustados, patrones y metadatos.", "Versioned JSON with embedded wavetables and samples, patterns and metadata."), getLocalBounds().reduced (26, 44).removeFromTop (18), juce::Justification::centredLeft);
 }
 
 void ExportPage::resized()
@@ -249,12 +251,20 @@ SettingsPage::SettingsPage (Context& c, std::function<void (float)> setScale, st
     scaleBox.setSelectedId ((int) std::lround (ctx.settings.scale() * 100), juce::dontSendNotification);
     if (scaleBox.getSelectedId() == 0) scaleBox.setSelectedId (100, juce::dontSendNotification);
     scaleBox.onChange = [this, setScale] { setScale ((float) scaleBox.getSelectedId() / 100.0f); };
-    animBox.addItemList ({ "Completas (60 fps)", "Reducidas (15 fps)", "Desactivadas" }, 1);
+    animBox.addItemList ({ L ("Completas (60 fps)", "Full (60 fps)"), L ("Reducidas (15 fps)", "Reduced (15 fps)"), L ("Desactivadas", "Off") }, 1);
     animBox.setSelectedItemIndex (ctx.settings.animation(), juce::dontSendNotification);
     animBox.onChange = [this] { ctx.settings.setAnimation (animBox.getSelectedItemIndex()); };
     langBox.addItemList ({ juce::String::fromUTF8 ("Español"), "English" }, 1);
     langBox.setSelectedItemIndex (ctx.settings.messageLanguage() == "en" ? 1 : 0, juce::dontSendNotification);
-    langBox.onChange = [this] { ctx.settings.setMessageLanguage (langBox.getSelectedItemIndex() == 1 ? "en" : "es"); };
+    langBox.onChange = [this]
+    {
+        const bool en = langBox.getSelectedItemIndex() == 1;
+        ctx.settings.setMessageLanguage (en ? "en" : "es");
+        // ponytail: labels are built once, so the full switch applies on the next editor open; AI messages switch now
+        uiEnglish() = en;
+        if (ctx.toast) ctx.toast (L ("Idioma cambiado: cierra y vuelve a abrir la ventana del plugin para aplicarlo del todo.",
+                                     "Language changed: close and reopen the plugin window to apply it everywhere."));
+    };
     aiMsgs.setToggleState (ctx.settings.aiMessages(), juce::dontSendNotification);
     aiMsgs.onClick = [this] { ctx.settings.setAiMessages (aiMsgs.getToggleState()); };
     preview.setToggleState (ctx.settings.previewOnSelect(), juce::dontSendNotification);
@@ -265,7 +275,7 @@ SettingsPage::SettingsPage (Context& c, std::function<void (float)> setScale, st
     historyLimit.setTextBoxStyle (juce::Slider::TextBoxRight, false, 60, 20);
     historyLimit.onValueChange = [this] { ctx.settings.setHistoryLimit ((int) historyLimit.getValue()); };
     openFolder.onClick = [] { Library::defaultRoot().startAsProcess(); };
-    clearLearn.onClick = [this] { ctx.proc.clearMidiLearn(); if (ctx.toast) ctx.toast ("Asignaciones MIDI Learn borradas"); };
+    clearLearn.onClick = [this] { ctx.proc.clearMidiLearn(); if (ctx.toast) ctx.toast (L ("Asignaciones MIDI Learn borradas", "MIDI Learn assignments cleared")); };
     aboutBtn.onClick = std::move (showAbout);
     for (auto* comp : std::initializer_list<juce::Component*> { &scaleBox, &animBox, &langBox, &aiMsgs, &preview, &historyLimit, &openFolder, &clearLearn, &aboutBtn })
         addAndMakeVisible (comp);
@@ -277,9 +287,9 @@ void SettingsPage::paint (juce::Graphics& g)
     drawPanel (g, r);
     g.setColour (col::text);
     g.setFont (font (13.0f, true));
-    const char* labels[] { "Tamaño de la interfaz", "Animaciones", "Idioma de los mensajes", "", "", "Límite del historial del generador" };
+    const juce::String labels[] { L ("Tamaño de la interfaz", "Interface size"), L ("Animaciones", "Animations"), "Idioma / Language", "", "", L ("Límite del historial del generador", "Generator history limit") };
     auto rows = getLocalBounds().reduced (28, 28).removeFromLeft (600);
-    for (auto* l : labels) { g.drawText (juce::String::fromUTF8 (l), rows.removeFromTop (40), juce::Justification::centredLeft); }
+    for (auto& l : labels) { g.drawText (l, rows.removeFromTop (40), juce::Justification::centredLeft); }
 }
 
 void SettingsPage::resized()

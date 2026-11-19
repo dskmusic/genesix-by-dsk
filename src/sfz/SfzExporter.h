@@ -1,5 +1,6 @@
 #pragma once
 #include "../preset/Preset.h"
+#include "../Lang.h"
 
 namespace gx
 {

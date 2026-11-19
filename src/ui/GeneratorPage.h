@@ -10,7 +10,7 @@ namespace gx::ui
 class GenerateButton : public juce::Component, public juce::SettableTooltipClient
 {
 public:
-    GenerateButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip ("Generar un preset nuevo (Ctrl+Enter)"); }
+    GenerateButton() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip (L ("Generar un preset nuevo (Ctrl+Enter)", "Generate a new preset (Ctrl+Enter)")); }
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override { pressed = true; repaint(); }
     void mouseUp (const juce::MouseEvent& e) override { pressed = false; repaint(); if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
@@ -90,7 +90,7 @@ private:
     GenerateButton genButton;
     AiConsole console;
     ResolveGrid grid;
-    juce::TextButton mutateBtn { "Mutar" }, blendBtn { "Mezclar" }, saveBtn { "Guardar" }, exportBtn { "Exportar" }, editorBtn { "Pasar a Editor" };
+    juce::TextButton mutateBtn { L ("Mutar", "Mutate") }, blendBtn { L ("Mezclar", "Blend") }, saveBtn { L ("Guardar", "Save") }, exportBtn { L ("Exportar", "Export") }, editorBtn { L ("Pasar a Editor", "Go to Editor") };
     juce::TextButton backBtn { "<" }, fwdBtn { ">" };
     juce::Label histLabel;
     // right

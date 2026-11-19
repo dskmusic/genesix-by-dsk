@@ -20,6 +20,7 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
       keyboard (p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard),
       frames (p)
 {
+    gx::uiEnglish() = settings.messageLanguage() == "en"; // before any page builds its labels
     setLookAndFeel (&lnf);
     juce::LookAndFeel::setDefaultLookAndFeel (&lnf);
     ctx.toast = [this] (const juce::String& m) { toast (m); };
@@ -27,7 +28,7 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
     ctx.startMidiLearn = [this] (int param)
     {
         proc.learnParam.store (param);
-        toast ("MIDI Learn: mueve un control de tu controlador para " + gx::paramDefs()[(size_t) param].name);
+        toast (gx::L ("MIDI Learn: mueve un control de tu controlador para ", "MIDI Learn: move a control on your controller for ") + gx::paramDefs()[(size_t) param].name);
     };
 
     addAndMakeVisible (root);
@@ -145,7 +146,7 @@ void GenesixEditor::toggleAB()
     abSlots[(size_t) abActive].applyTo (proc);
     proc.currentMeta = meta;
     header->abButton.setButtonText (abActive == 0 ? "A" : "B");
-    toast (abActive == 0 ? "Comparando: A" : "Comparando: B (edita libremente, A se conserva)");
+    toast (abActive == 0 ? gx::L ("Comparando: A", "Comparing: A") : gx::L ("Comparando: B (edita libremente, A se conserva)", "Comparing: B (edit freely, A is kept)"));
     refreshAll();
 }
 

@@ -63,7 +63,7 @@ void GenerateButton::paint (juce::Graphics& g)
     }
     g.setColour (juce::Colours::black.withAlpha (0.85f));
     g.setFont (font (r * 0.34f, true));
-    g.drawText (working ? juce::String::fromUTF8 ("CREANDO…") : juce::String ("GENERAR"), b, juce::Justification::centred);
+    g.drawText (working ? L ("CREANDO…", "CREATING…") : L ("GENERAR", "GENERATE"), b, juce::Justification::centred);
     for (auto& p : particles)
     {
         g.setColour (p.c.withAlpha (juce::jlimit (0.0f, 1.0f, p.life)));
@@ -131,16 +131,16 @@ void ResolveGrid::setTarget (const Preset& p)
     for (int s = 0; s < kNumModSlots; ++s) mods += p.params[(size_t) P::mod (s, P::mSrc)] > 0;
     cells = { { { "OSC A", v ("osc1_on") > 0.5f ? choice ("osc1_type") : juce::String ("-") },
                 { "OSC B", v ("osc2_on") > 0.5f ? choice ("osc2_type") : juce::String ("-") },
-                { "FILTRO", v ("filter1_on") > 0.5f ? choice ("filter1_type") : juce::String ("bypass") },
+                { L ("FILTRO", "FILTER"), v ("filter1_on") > 0.5f ? choice ("filter1_type") : juce::String ("bypass") },
                 { "CUTOFF", juce::String (v ("filter1_cutoff") / 1000.0f, 2) + " kHz" },
                 { "RESO", juce::String ((int) (v ("filter1_reso") * 100)) + " %" },
-                { "ATAQUE", secs (v ("env1_attack")) },
+                { L ("ATAQUE", "ATTACK"), secs (v ("env1_attack")) },
                 { "RELEASE", secs (v ("env1_release")) },
                 { "UNISON", juce::String ((int) v ("uni_voices")) + " v" },
-                { "MOD", juce::String (mods) + " rutas" },
-                { "FX", juce::String (fxCount) + " activos" },
-                { "RITMO", v ("arp_on") > 0.5f ? juce::String ("ARP ") + choice ("arp_mode") : (v ("tg_on") > 0.5f ? juce::String ("GATE") : juce::String ("-")) },
-                { "NIVEL", juce::String (v ("master"), 1) + " dB" } } };
+                { "MOD", juce::String (mods) + L (" rutas", " routes") },
+                { "FX", juce::String (fxCount) + L (" activos", " active") },
+                { L ("RITMO", "RHYTHM"), v ("arp_on") > 0.5f ? juce::String ("ARP ") + choice ("arp_mode") : (v ("tg_on") > 0.5f ? juce::String ("GATE") : juce::String ("-")) },
+                { L ("NIVEL", "LEVEL"), juce::String (v ("master"), 1) + " dB" } } };
     repaint();
 }
 
@@ -196,7 +196,7 @@ GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macr
         b->setToggleState (cat == category, juce::dontSendNotification);
         addAndMakeVisible (b);
     }
-    sliderNames = { "Brillo", "Movimiento", "Agresividad", "Espacio", "Rareza" };
+    sliderNames = { L ("Brillo", "Brightness"), L ("Movimiento", "Movement"), L ("Agresividad", "Aggression"), L ("Espacio", "Space"), L ("Rareza", "Weirdness") };
     const float defaults[] { 0.5f, 0.5f, 0.35f, 0.4f, 0.2f };
     for (int i = 0; i < sliderNames.size(); ++i)
     {
@@ -208,13 +208,13 @@ GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macr
         s->getProperties().set ("arc", (juce::int64) (i == 4 ? col::accent3 : i == 2 ? col::danger : col::accent).getARGB());
         addAndMakeVisible (s);
     }
-    const char* lockNames[] { "OSC", "FILTRO", "ENV", "MOD", "FX", "RITMO" };
+    const juce::String lockNames[] { "OSC", L ("FILTRO", "FILTER"), "ENV", "MOD", "FX", L ("RITMO", "RHYTHM") };
     const char* lockIds[] { "osc", "filter", "env", "mod", "fx", "rhythm" };
     for (int i = 0; i < 6; ++i)
     {
         auto* t = locks.add (new juce::ToggleButton (lockNames[i]));
         t->getProperties().set ("lock", lockIds[i]);
-        t->setTooltip (juce::String::fromUTF8 ("Bloquear esta sección: GENERAR y MUTAR la conservan"));
+        t->setTooltip (L ("Bloquear esta sección: GENERAR y MUTAR la conservan", "Lock this section: GENERATE and MUTATE keep it"));
         addAndMakeVisible (t);
     }
     addAndMakeVisible (genButton);
@@ -222,10 +222,10 @@ GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macr
     addAndMakeVisible (console);
     addAndMakeVisible (grid);
     for (auto* b : { &mutateBtn, &blendBtn, &saveBtn, &exportBtn, &editorBtn, &backBtn, &fwdBtn }) addAndMakeVisible (b);
-    mutateBtn.setTooltip (juce::String::fromUTF8 ("Variación suave del preset actual"));
-    blendBtn.setTooltip ("Mezclar con otro preset");
-    backBtn.setTooltip ("Anterior en el historial (Alt+Izquierda)");
-    fwdBtn.setTooltip ("Siguiente en el historial (Alt+Derecha)");
+    mutateBtn.setTooltip (L ("Variación suave del preset actual", "Gentle variation of the current preset"));
+    blendBtn.setTooltip (L ("Mezclar con otro preset", "Blend with another preset"));
+    backBtn.setTooltip (L ("Anterior en el historial (Alt+Izquierda)", "Previous in history (Alt+Left)"));
+    fwdBtn.setTooltip (L ("Siguiente en el historial (Alt+Derecha)", "Next in history (Alt+Right)"));
     mutateBtn.onClick = [this] { startJob (Job::Mutate); };
     blendBtn.onClick = [this] { showBlendMenu(); };
     saveBtn.onClick = [this] { saveCurrent(); };
@@ -242,15 +242,15 @@ GeneratorPage::GeneratorPage (Context& c) : Page (c), macros (c, "Macros", "macr
     std::vector<juce::Component*> mk;
     for (int m = 0; m < kNumMacros; ++m)
     {
-        static const char* names[] { "BRILLO", "TIMBRE", "ESPACIO", "CARÁCTER", "MACRO 5", "MACRO 6", "MACRO 7", "MACRO 8" };
-        auto* k = &macros.add<ParamKnob> (c, P::macro1 + m, juce::String::fromUTF8 (names[m]));
+        const juce::String names[] { L ("BRILLO", "BRIGHT"), "TIMBRE", L ("ESPACIO", "SPACE"), L ("CARÁCTER", "CHARACTER"), "MACRO 5", "MACRO 6", "MACRO 7", "MACRO 8" };
+        auto* k = &macros.add<ParamKnob> (c, P::macro1 + m, names[m]);
         k->slider.getProperties().set ("arc", (juce::int64) col::accent3.getARGB());
         mk.push_back (k);
     }
     macros.layout = [mk] (juce::Rectangle<int> r) { gridKnobs (mk, r, 4); };
     addAndMakeVisible (macros);
     grid.setTarget (Preset::capture (ctx.proc));
-    console.showIdle (ctx.settings.messageLanguage() == "en" ? "Ready. Pick a category and press GENERATE." : juce::String::fromUTF8 ("Listo. Elige una categoría y pulsa GENERAR."));
+    console.showIdle (L ("Listo. Elige una categoría y pulsa GENERAR.", "Ready. Pick a category and press GENERATE."));
     updateHistoryLabel();
     startTimerHz (30);
 }
@@ -314,8 +314,8 @@ void GeneratorPage::startJob (Job j, const Preset* other)
     const bool msgs = ctx.settings.aiMessages();
     minDuration = msgs ? 1.6 : 0.5;
     const auto cat = j == Job::Generate ? category : ctx.proc.currentMeta.category;
-    if (msgs) console.start (aiMessages (cat, ctx.settings.messageLanguage() == "en", msgRng, 4, lastMsg), minDuration);
-    else console.showIdle (ctx.settings.messageLanguage() == "en" ? "Generating..." : "Generando...");
+    if (msgs) console.start (aiMessages (cat, uiEnglish(), msgRng, 4, lastMsg), minDuration);
+    else console.showIdle (L ("Generando...", "Generating..."));
     genButton.burst();
 }
 
@@ -325,8 +325,8 @@ void GeneratorPage::finishJob()
     if (jobFailed.exchange (false))
     {
         busy = false;
-        console.showIdle (juce::String::fromUTF8 ("La variación no pasó la validación: se conserva el sonido actual."));
-        if (ctx.toast) ctx.toast (juce::String::fromUTF8 ("Variación descartada (no pasó la validación de calidad)"));
+        console.showIdle (L ("La variación no pasó la validación: se conserva el sonido actual.", "The variation failed validation: keeping the current sound."));
+        if (ctx.toast) ctx.toast (L ("Variación descartada (no pasó la validación de calidad)", "Variation discarded (failed the quality check)"));
         return;
     }
     result.applyTo (ctx.proc);
@@ -368,17 +368,17 @@ void GeneratorPage::presetLoaded() { grid.setTarget (Preset::capture (ctx.proc))
 void GeneratorPage::saveCurrent()
 {
     auto p = Preset::capture (ctx.proc);
-    auto* w = new juce::AlertWindow ("Guardar preset generado", "", juce::MessageBoxIconType::NoIcon);
-    w->addTextEditor ("name", p.meta.name, "Nombre");
-    w->addComboBox ("cat", categories(), juce::String::fromUTF8 ("Categoría"));
+    auto* w = new juce::AlertWindow (L ("Guardar preset generado", "Save generated preset"), "", juce::MessageBoxIconType::NoIcon);
+    w->addTextEditor ("name", p.meta.name, L ("Nombre", "Name"));
+    w->addComboBox ("cat", categories(), L ("Categoría", "Category"));
     w->getComboBoxComponent ("cat")->setText (p.meta.category, juce::dontSendNotification);
-    w->addTextEditor ("sub", p.meta.subcategory, juce::String::fromUTF8 ("Subcategoría"));
-    w->addTextEditor ("tags", p.meta.tags.joinIntoString (", "), "Etiquetas");
-    w->addTextEditor ("author", "Usuario", "Autor");
-    w->addTextEditor ("notes", p.meta.notes, "Notas");
-    w->addComboBox ("fav", { "No favorito", "Favorito" }, "Favorito");
-    w->addButton ("Guardar", 1, juce::KeyPress (juce::KeyPress::returnKey));
-    w->addButton ("Cancelar", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+    w->addTextEditor ("sub", p.meta.subcategory, L ("Subcategoría", "Subcategory"));
+    w->addTextEditor ("tags", p.meta.tags.joinIntoString (", "), L ("Etiquetas", "Tags"));
+    w->addTextEditor ("author", L ("Usuario", "User"), L ("Autor", "Author"));
+    w->addTextEditor ("notes", p.meta.notes, L ("Notas", "Notes"));
+    w->addComboBox ("fav", { L ("No favorito", "Not favourite"), L ("Favorito", "Favourite") }, L ("Favorito", "Favourite"));
+    w->addButton (L ("Guardar", "Save"), 1, juce::KeyPress (juce::KeyPress::returnKey));
+    w->addButton (L ("Cancelar", "Cancel"), 0, juce::KeyPress (juce::KeyPress::escapeKey));
     w->enterModalState (true, juce::ModalCallbackFunction::create ([this, w, p] (int r) mutable
     {
         if (r != 1) return;
@@ -395,7 +395,7 @@ void GeneratorPage::saveCurrent()
         {
             ctx.proc.currentMeta = p.meta;
             if (p.meta.favorite) ctx.library.setFavorite (ctx.library.indexOfUuid (p.meta.uuid), true);
-            if (ctx.toast) ctx.toast ("Guardado en PRESETS: " + p.meta.name);
+            if (ctx.toast) ctx.toast (L ("Guardado en PRESETS: ", "Saved to PRESETS: ") + p.meta.name);
             if (onPresetChanged) onPresetChanged();
         }
     }), true);
@@ -404,10 +404,10 @@ void GeneratorPage::saveCurrent()
 void GeneratorPage::showBlendMenu()
 {
     juce::PopupMenu m;
-    m.addItem (1, "Con el anterior del historial", history->previous() != nullptr);
-    m.addItem (2, "Con un favorito al azar");
-    m.addItem (3, juce::String::fromUTF8 ("Con un preset de la misma categoría"));
-    m.addItem (4, "Con un preset cualquiera de la biblioteca");
+    m.addItem (1, L ("Con el anterior del historial", "With the previous one in history"), history->previous() != nullptr);
+    m.addItem (2, L ("Con un favorito al azar", "With a random favourite"));
+    m.addItem (3, L ("Con un preset de la misma categoría", "With a preset from the same category"));
+    m.addItem (4, L ("Con un preset cualquiera de la biblioteca", "With any preset from the library"));
     m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&blendBtn), [this] (int r)
     {
         if (r == 1) { if (auto* p = history->previous()) startJob (Job::Blend, p); return; }
@@ -416,11 +416,11 @@ void GeneratorPage::showBlendMenu()
         if (r == 2) f.favoritesOnly = true;
         if (r == 3) f.category = ctx.proc.currentMeta.category;
         auto idx = ctx.library.query (f);
-        if (idx.empty()) { if (ctx.toast) ctx.toast ("No hay presets para mezclar con ese criterio"); return; }
+        if (idx.empty()) { if (ctx.toast) ctx.toast (L ("No hay presets para mezclar con ese criterio", "No presets to blend with for that choice")); return; }
         Preset other;
         if (ctx.library.load (idx[(size_t) juce::Random::getSystemRandom().nextInt ((int) idx.size())], other))
         {
-            if (ctx.toast) ctx.toast ("Mezclando con: " + other.meta.name);
+            if (ctx.toast) ctx.toast (L ("Mezclando con: ", "Blending with: ") + other.meta.name);
             startJob (Job::Blend, &other);
         }
     });
@@ -453,7 +453,7 @@ void GeneratorPage::tick (const Frame& f)
     const float dis = b ? (float) juce::jlimit (0.0, 1.0, (t - jobStart) / 0.35) : 0.0f;
     const float as = (float) juce::jlimit (0.0, 1.0, (t - assembleStart) / 0.6);
     grid.animate (b ? 0.9f : juce::jmax (0.0f, 1.0f - as * 1.4f), b ? 0.0f : as, dis);
-    scope.label = b ? juce::String::fromUTF8 ("ENSAMBLANDO…") : juce::String ("OSCILOSCOPIO");
+    scope.label = b ? L ("ENSAMBLANDO…", "ASSEMBLING…") : L ("OSCILOSCOPIO", "OSCILLOSCOPE");
 }
 
 void GeneratorPage::paint (juce::Graphics& g)
@@ -465,19 +465,19 @@ void GeneratorPage::paint (juce::Graphics& g)
     g.setColour (col::text);
     g.setFont (font (12.0f, true));
     auto l = left.reduced (12, 8);
-    g.drawText (juce::String::fromUTF8 ("CATEGORÍA"), l.removeFromTop (16), juce::Justification::centredLeft);
+    g.drawText (L ("CATEGORÍA", "CATEGORY"), l.removeFromTop (16), juce::Justification::centredLeft);
     l.removeFromTop (6 * 30 + 8);
-    g.drawText (juce::String::fromUTF8 ("CARÁCTER"), l.removeFromTop (16), juce::Justification::centredLeft);
+    g.drawText (L ("CARÁCTER", "CHARACTER"), l.removeFromTop (16), juce::Justification::centredLeft);
     auto sl = l.removeFromTop (230);
     g.setFont (font (10.5f, true));
     g.setColour (col::textDim);
     const int sw = sl.getWidth() / sliderNames.size();
     for (int i = 0; i < sliderNames.size(); ++i)
-        g.drawFittedText (juce::StringArray { "BRILLO", "MOVIM.", "AGRES.", "ESPACIO", "RAREZA" }[i], sl.getX() + i * sw, sl.getBottom() - 16, sw, 16, juce::Justification::centred, 1, 0.6f);
+        g.drawFittedText (juce::StringArray { L ("BRILLO", "BRIGHT"), L ("MOVIM.", "MOVEM."), L ("AGRES.", "AGGR."), L ("ESPACIO", "SPACE"), L ("RAREZA", "WEIRD") }[i], sl.getX() + i * sw, sl.getBottom() - 16, sw, 16, juce::Justification::centred, 1, 0.6f);
     g.setColour (col::text);
     g.setFont (font (12.0f, true));
     l.removeFromTop (8);
-    g.drawText ("BLOQUEAR SECCIONES", l.removeFromTop (16), juce::Justification::centredLeft);
+    g.drawText (L ("BLOQUEAR SECCIONES", "LOCK SECTIONS"), l.removeFromTop (16), juce::Justification::centredLeft);
 }
 
 void GeneratorPage::resized()

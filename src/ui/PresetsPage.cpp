@@ -12,7 +12,7 @@ void PresetsPage::StringModel::paintListBoxItem (int row, juce::Graphics& g, int
 
 PresetsPage::PresetsPage (Context& c) : Page (c)
 {
-    catModel.items.add ("Todas");
+    catModel.items.add (L ("Todas", "All"));
     catModel.items.addArray (categories());
     catList.setModel (&catModel);
     subList.setModel (&subModel);
@@ -20,7 +20,7 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
     catModel.onSelect = [this] (int) { rebuildCategoryList(); requery(); };
     subModel.onSelect = [this] (int) { requery(); };
     for (auto* l : { &catList, &subList, &list }) { l->setColour (juce::ListBox::backgroundColourId, col::bgDeep); addAndMakeVisible (l); }
-    search.setTextToShowWhenEmpty (juce::String::fromUTF8 ("Buscar por nombre, tags, categoría, autor, notas..."), col::textDim);
+    search.setTextToShowWhenEmpty (L ("Buscar por nombre, tags, categoría, autor, notas...", "Search name, tags, category, author, notes..."), col::textDim);
     search.addListener (this);
     search.setFont (font (14.0f));
     addAndMakeVisible (search);
@@ -31,9 +31,9 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
         b->onClick = [this] { requery(); };
         addAndMakeVisible (b);
     }
-    typeBox.addItemList ({ "Todos", juce::String::fromUTF8 ("Fábrica"), "Usuario" }, 1);
+    typeBox.addItemList ({ L ("Todos", "All"), L ("Fábrica", "Factory"), L ("Usuario", "User") }, 1);
     typeBox.setSelectedItemIndex (0, juce::dontSendNotification);
-    sortBox.addItemList ({ "Nombre", "Fecha", juce::String::fromUTF8 ("Categoría"), juce::String::fromUTF8 ("Valoración"), "Usos" }, 1);
+    sortBox.addItemList ({ L ("Nombre", "Name"), L ("Fecha", "Date"), L ("Categoría", "Category"), L ("Valoración", "Rating"), L ("Usos", "Uses") }, 1);
     sortBox.setSelectedItemIndex (0, juce::dontSendNotification);
     for (auto* cb : { &typeBox, &sortBox, &authorBox, &folderBox }) { cb->onChange = [this] { requery(); }; addAndMakeVisible (cb); }
     favOnly.onClick = [this] { requery(); };
@@ -52,7 +52,7 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
         if (idx >= 0 && ! ctx.library.all()[(size_t) idx].factory)
         {
             auto p = Preset::capture (ctx.proc);
-            if (ctx.library.saveUser (p, ctx.library.all()[(size_t) idx].folder) && ctx.toast) ctx.toast ("Guardado: " + p.meta.name);
+            if (ctx.library.saveUser (p, ctx.library.all()[(size_t) idx].folder) && ctx.toast) ctx.toast (L ("Guardado: ", "Saved: ") + p.meta.name);
             refresh();
         }
         else editMeta (-1);
@@ -60,9 +60,9 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
     saveAsBtn.onClick = [this] { editMeta (-1); };
     folderBtn.onClick = [this]
     {
-        auto* w = new juce::AlertWindow ("Nueva carpeta de usuario", "Nombre de la carpeta:", juce::MessageBoxIconType::NoIcon);
-        w->addTextEditor ("name", "Mis sonidos");
-        w->addButton ("Crear", 1); w->addButton ("Cancelar", 0);
+        auto* w = new juce::AlertWindow (L ("Nueva carpeta de usuario", "New user folder"), L ("Nombre de la carpeta:", "Folder name:"), juce::MessageBoxIconType::NoIcon);
+        w->addTextEditor ("name", L ("Mis sonidos", "My sounds"));
+        w->addButton (L ("Crear", "Create"), 1); w->addButton (L ("Cancelar", "Cancel"), 0);
         w->enterModalState (true, juce::ModalCallbackFunction::create ([this, w] (int r)
         {
             if (r == 1) ctx.library.createFolder (w->getTextEditorContents ("name"));
@@ -71,23 +71,23 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
     };
     importBtn.onClick = [this]
     {
-        chooser = std::make_unique<juce::FileChooser> ("Importar presets / bancos", juce::File(), "*.genesix;*.genesixbank");
+        chooser = std::make_unique<juce::FileChooser> (L ("Importar presets / bancos", "Import presets / banks"), juce::File(), "*.genesix;*.genesixbank");
         chooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectMultipleItems, [this] (const juce::FileChooser& fc)
         {
             int n = 0;
             for (auto& f : fc.getResults()) n += ctx.library.importFile (f);
-            if (ctx.toast) ctx.toast (juce::String (n) + " preset(s) importados");
+            if (ctx.toast) ctx.toast (juce::String (n) + L (" preset(s) importados", " preset(s) imported"));
             refresh();
         });
     };
     exportBtn.onClick = [this]
     {
-        chooser = std::make_unique<juce::FileChooser> ("Exportar banco (presets filtrados)", Library::defaultRoot().getChildFile ("Banco.genesixbank"), "*.genesixbank");
+        chooser = std::make_unique<juce::FileChooser> (L ("Exportar banco (presets filtrados)", "Export bank (filtered presets)"), Library::defaultRoot().getChildFile ("Banco.genesixbank"), "*.genesixbank");
         chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting, [this] (const juce::FileChooser& fc)
         {
             auto f = fc.getResult();
             if (f == juce::File()) return;
-            if (ctx.library.exportBank (shown, f.withFileExtension ("genesixbank")) && ctx.toast) ctx.toast (juce::String ((int) shown.size()) + " presets exportados");
+            if (ctx.library.exportBank (shown, f.withFileExtension ("genesixbank")) && ctx.toast) ctx.toast (juce::String ((int) shown.size()) + L (" presets exportados", " presets exported"));
         });
     };
     ctx.library.onChange = [sp = juce::Component::SafePointer<PresetsPage> (this)] { juce::MessageManager::callAsync ([sp] { if (sp) sp->requery(); }); };
@@ -98,7 +98,7 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
 void PresetsPage::rebuildCategoryList()
 {
     subModel.items.clear();
-    subModel.items.add ("Todas");
+    subModel.items.add (L ("Todas", "All"));
     if (catModel.selected > 0) subModel.items.addArray (subcategories (catModel.items[catModel.selected]));
     subModel.selected = 0;
     subList.updateContent();
@@ -110,13 +110,13 @@ void PresetsPage::refresh()
 {
     const auto a = authorBox.getText(), fo = folderBox.getText();
     authorBox.clear (juce::dontSendNotification);
-    authorBox.addItem ("Todos los autores", 1);
+    authorBox.addItem (L ("Todos los autores", "All authors"), 1);
     authorBox.addItemList (ctx.library.authors(), 2);
-    authorBox.setText (a.isEmpty() ? "Todos los autores" : a, juce::dontSendNotification);
+    authorBox.setText (a.isEmpty() ? L ("Todos los autores", "All authors") : a, juce::dontSendNotification);
     folderBox.clear (juce::dontSendNotification);
-    folderBox.addItem ("Todas las carpetas", 1);
+    folderBox.addItem (L ("Todas las carpetas", "All folders"), 1);
     folderBox.addItemList (ctx.library.userFolders(), 2);
-    folderBox.setText (fo.isEmpty() ? "Todas las carpetas" : fo, juce::dontSendNotification);
+    folderBox.setText (fo.isEmpty() ? L ("Todas las carpetas", "All folders") : fo, juce::dontSendNotification);
     if (subModel.items.isEmpty()) rebuildCategoryList();
     catList.updateContent();
     requery();
@@ -168,7 +168,7 @@ void PresetsPage::paintListBoxItem (int row, juce::Graphics& g, int w, int h, bo
     g.setColour (col::accent2);
     g.drawText (stars, w - 150, 0, 70, h, juce::Justification::centredLeft);
     g.setColour (col::textDim);
-    g.drawText (m.factory ? juce::String::fromUTF8 ("FÁBRICA") : "USUARIO", w - 78, 0, 72, h, juce::Justification::centredRight);
+    g.drawText (m.factory ? L ("FÁBRICA", "FACTORY") : L ("USUARIO", "USER"), w - 78, 0, 72, h, juce::Justification::centredRight);
 }
 
 void PresetsPage::loadRow (int row)
@@ -176,14 +176,14 @@ void PresetsPage::loadRow (int row)
     if (row < 0 || row >= (int) shown.size()) return;
     Preset p;
     const int idx = shown[(size_t) row];
-    if (! ctx.library.load (idx, p)) { if (ctx.toast) ctx.toast ("No se pudo cargar el preset"); return; }
+    if (! ctx.library.load (idx, p)) { if (ctx.toast) ctx.toast (L ("No se pudo cargar el preset", "Could not load the preset")); return; }
     p.applyTo (ctx.proc);
     ctx.library.markUsed (idx);
     ctx.undo.reset();
     if (onLoaded) onLoaded (p);
     const auto& m = ctx.library.all()[(size_t) idx];
-    info.setText (m.name + "\n" + m.category + " / " + m.subcategory + "\nAutor: " + m.author + "\nTags: " + m.tags.joinIntoString (", ")
-                  + "\nUsos: " + juce::String (m.uses) + "\n\n" + m.notes, juce::dontSendNotification);
+    info.setText (m.name + "\n" + m.category + " / " + m.subcategory + L ("\nAutor: ", "\nAuthor: ") + m.author + "\nTags: " + m.tags.joinIntoString (", ")
+                  + L ("\nUsos: ", "\nUses: ") + juce::String (m.uses) + "\n\n" + m.notes, juce::dontSendNotification);
     if (ctx.settings.previewOnSelect())
     {
         ctx.proc.keyboardState.noteOn (1, 60, 0.75f);
@@ -224,17 +224,17 @@ void PresetsPage::showRowMenu (int row)
     const int idx = shown[(size_t) row];
     const auto m = ctx.library.all()[(size_t) idx];
     juce::PopupMenu menu, rate, move;
-    for (int s = 0; s <= 5; ++s) rate.addItem (100 + s, s == 0 ? "Sin valorar" : juce::String::repeatedString (juce::String::fromUTF8 ("\xe2\x98\x85"), s), true, m.rating == s);
+    for (int s = 0; s <= 5; ++s) rate.addItem (100 + s, s == 0 ? L ("Sin valorar", "Unrated") : juce::String::repeatedString (juce::String::fromUTF8 ("\xe2\x98\x85"), s), true, m.rating == s);
     for (int cIdx = 0; cIdx < categories().size(); ++cIdx) move.addItem (200 + cIdx, categories()[cIdx], true, m.category == categories()[cIdx]);
-    menu.addItem (1, "Cargar");
-    menu.addItem (2, m.favorite ? "Quitar de favoritos" : juce::String::fromUTF8 ("Añadir a favoritos"));
-    menu.addSubMenu (juce::String::fromUTF8 ("Valoración"), rate);
+    menu.addItem (1, L ("Cargar", "Load"));
+    menu.addItem (2, m.favorite ? L ("Quitar de favoritos", "Remove from favourites") : L ("Añadir a favoritos", "Add to favourites"));
+    menu.addSubMenu (L ("Valoración", "Rating"), rate);
     menu.addSeparator();
-    menu.addItem (3, "Editar nombre, tags y metadatos...");
-    menu.addSubMenu (juce::String::fromUTF8 ("Mover a categoría"), move);
-    menu.addItem (4, "Duplicar");
-    menu.addItem (5, "Exportar preset...");
-    menu.addItem (6, "Borrar", ! m.factory);
+    menu.addItem (3, L ("Editar nombre, tags y metadatos...", "Edit name, tags and metadata..."));
+    menu.addSubMenu (L ("Mover a categoría", "Move to category"), move);
+    menu.addItem (4, L ("Duplicar", "Duplicate"));
+    menu.addItem (5, L ("Exportar preset...", "Export preset..."));
+    menu.addItem (6, L ("Borrar", "Delete"), ! m.factory);
     menu.showMenuAsync ({}, [this, idx, m] (int r)
     {
         if (r == 1) { for (int i = 0; i < (int) shown.size(); ++i) if (shown[(size_t) i] == idx) loadRow (i); }
@@ -243,12 +243,12 @@ void PresetsPage::showRowMenu (int row)
         else if (r == 4) ctx.library.duplicate (idx);
         else if (r == 5)
         {
-            chooser = std::make_unique<juce::FileChooser> ("Exportar preset", Library::defaultRoot().getChildFile (m.name + ".genesix"), "*.genesix");
+            chooser = std::make_unique<juce::FileChooser> (L ("Exportar preset", "Export preset"), Library::defaultRoot().getChildFile (m.name + ".genesix"), "*.genesix");
             chooser->launchAsync (juce::FileBrowserComponent::saveMode, [this, idx] (const juce::FileChooser& fc)
             { if (fc.getResult() != juce::File()) ctx.library.exportPreset (idx, fc.getResult().withFileExtension ("genesix")); });
         }
         else if (r == 6)
-            juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::WarningIcon, "Borrar preset", juce::String::fromUTF8 ("¿Borrar \"") + m.name + "\"?", "Borrar", "Cancelar", nullptr,
+            juce::AlertWindow::showOkCancelBox (juce::MessageBoxIconType::WarningIcon, L ("Borrar preset", "Delete preset"), L ("¿Borrar \"", "Delete \"") + m.name + "\"?", L ("Borrar", "Delete"), L ("Cancelar", "Cancel"), nullptr,
                 juce::ModalCallbackFunction::create ([this, idx] (int ok) { if (ok) ctx.library.remove (idx); }));
         else if (r >= 100 && r <= 105) ctx.library.setRating (idx, r - 100);
         else if (r >= 200)
@@ -263,28 +263,28 @@ void PresetsPage::showRowMenu (int row)
 void PresetsPage::editMeta (int libIndex)
 {
     PresetMeta m = libIndex >= 0 ? ctx.library.all()[(size_t) libIndex] : ctx.proc.currentMeta;
-    if (libIndex < 0 && m.factory) { m.author = "Usuario"; }
-    auto* w = new juce::AlertWindow (libIndex >= 0 ? "Editar preset" : "Guardar preset", "", juce::MessageBoxIconType::NoIcon);
-    w->addTextEditor ("name", m.name, "Nombre");
-    w->addComboBox ("cat", categories(), juce::String::fromUTF8 ("Categoría"));
+    if (libIndex < 0 && m.factory) { m.author = L ("Usuario", "User"); }
+    auto* w = new juce::AlertWindow (libIndex >= 0 ? L ("Editar preset", "Edit preset") : L ("Guardar preset", "Save preset"), "", juce::MessageBoxIconType::NoIcon);
+    w->addTextEditor ("name", m.name, L ("Nombre", "Name"));
+    w->addComboBox ("cat", categories(), L ("Categoría", "Category"));
     if (auto* cb = w->getComboBoxComponent ("cat")) cb->setText (m.category, juce::dontSendNotification);
-    w->addTextEditor ("sub", m.subcategory, juce::String::fromUTF8 ("Subcategoría"));
-    w->addTextEditor ("tags", m.tags.joinIntoString (", "), "Etiquetas (separadas por comas)");
-    w->addTextEditor ("author", m.author, "Autor");
-    w->addTextEditor ("notes", m.notes, "Notas");
-    juce::StringArray folders { juce::String::fromUTF8 ("(raíz)") };
+    w->addTextEditor ("sub", m.subcategory, L ("Subcategoría", "Subcategory"));
+    w->addTextEditor ("tags", m.tags.joinIntoString (", "), L ("Etiquetas (separadas por comas)", "Tags (comma separated)"));
+    w->addTextEditor ("author", m.author, L ("Autor", "Author"));
+    w->addTextEditor ("notes", m.notes, L ("Notas", "Notes"));
+    juce::StringArray folders { L ("(raíz)", "(root)") };
     folders.addArray (ctx.library.userFolders());
-    w->addComboBox ("folder", folders, "Carpeta");
-    if (auto* cb = w->getComboBoxComponent ("folder")) cb->setText (m.folder.isEmpty() ? juce::String::fromUTF8 ("(raíz)") : m.folder, juce::dontSendNotification);
-    w->addComboBox ("fav", { "No favorito", "Favorito" }, "Favorito");
+    w->addComboBox ("folder", folders, L ("Carpeta", "Folder"));
+    if (auto* cb = w->getComboBoxComponent ("folder")) cb->setText (m.folder.isEmpty() ? L ("(raíz)", "(root)") : m.folder, juce::dontSendNotification);
+    w->addComboBox ("fav", { L ("No favorito", "Not favourite"), L ("Favorito", "Favourite") }, L ("Favorito", "Favourite"));
     if (auto* cb = w->getComboBoxComponent ("fav")) cb->setSelectedItemIndex (m.favorite ? 1 : 0, juce::dontSendNotification);
-    w->addButton ("Guardar", 1, juce::KeyPress (juce::KeyPress::returnKey));
-    w->addButton ("Cancelar", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+    w->addButton (L ("Guardar", "Save"), 1, juce::KeyPress (juce::KeyPress::returnKey));
+    w->addButton (L ("Cancelar", "Cancel"), 0, juce::KeyPress (juce::KeyPress::escapeKey));
     w->enterModalState (true, juce::ModalCallbackFunction::create ([this, w, libIndex, m] (int r) mutable
     {
         if (r != 1) return;
         m.name = w->getTextEditorContents ("name").trim();
-        if (m.name.isEmpty()) m.name = "Sin nombre";
+        if (m.name.isEmpty()) m.name = L ("Sin nombre", "Untitled");
         m.category = w->getComboBoxComponent ("cat")->getText();
         m.subcategory = w->getTextEditorContents ("sub").trim();
         m.tags = juce::StringArray::fromTokens (w->getTextEditorContents ("tags"), ",", "");
@@ -292,7 +292,7 @@ void PresetsPage::editMeta (int libIndex)
         m.author = w->getTextEditorContents ("author").trim();
         m.notes = w->getTextEditorContents ("notes");
         const auto folder = w->getComboBoxComponent ("folder")->getText();
-        m.folder = folder == juce::String::fromUTF8 ("(raíz)") ? juce::String() : folder;
+        m.folder = folder == L ("(raíz)", "(root)") ? juce::String() : folder;
         m.favorite = w->getComboBoxComponent ("fav")->getSelectedItemIndex() == 1;
         if (libIndex >= 0) ctx.library.updateMeta (libIndex, m);
         else
@@ -305,7 +305,7 @@ void PresetsPage::editMeta (int libIndex)
             {
                 ctx.proc.currentMeta = p.meta;
                 if (const int ni = ctx.library.indexOfUuid (p.meta.uuid); ni >= 0 && m.favorite) ctx.library.setFavorite (ni, true);
-                if (ctx.toast) ctx.toast ("Guardado: " + p.meta.name);
+                if (ctx.toast) ctx.toast (L ("Guardado: ", "Saved: ") + p.meta.name);
                 if (onLoaded) onLoaded (p);
             }
         }
@@ -322,7 +322,7 @@ void PresetsPage::paint (juce::Graphics& g)
     drawPanel (g, r.removeFromRight (330).toFloat());
     g.setColour (col::textDim);
     g.setFont (font (11.0f, true));
-    g.drawText (juce::String::fromUTF8 ("CATEGORÍA"), 20, 12, 160, 16, juce::Justification::centredLeft);
+    g.drawText (L ("CATEGORÍA", "CATEGORY"), 20, 12, 160, 16, juce::Justification::centredLeft);
 }
 
 void PresetsPage::resized()

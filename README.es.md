@@ -98,6 +98,7 @@ Su pantalla principal es un **generador inteligente de presets**: eliges categor
 ### Diseño
 - Aspecto propio inspirado en FL Studio: tema gris carbón, acentos naranja y verde, paneles biselados, knobs con aro de valor y de modulación, y tooltips con valor.
 - Interfaz vectorial **redimensionable y escalable del 50 % al 200 %**. Todo el aspecto se define en un único módulo de tema.
+- **Interfaz en inglés y en español**: se elige sola según el idioma del sistema en el primer arranque y se puede cambiar en Ajustes.
 
 ## Capturas
 

@@ -51,7 +51,7 @@ public:
     void tick (const Frame&) override;
     void paint (juce::Graphics&) override;
     void resized() override { trail = juce::Image(); }
-    juce::String label = "OSCILOSCOPIO";
+    juce::String label = L ("OSCILOSCOPIO", "OSCILLOSCOPE");
 private:
     juce::Image trail;
     std::array<float, 512> trace {};

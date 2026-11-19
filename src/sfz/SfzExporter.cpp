@@ -23,16 +23,16 @@ juce::StringArray SfzExporter::unrepresentable (const Preset& p)
         if (src >= msMacro1 && src <= msMacro8) macroSrc = true;
         if (src == msRandom) randomSrc = true;
     }
-    if (realtimeSrc) w.add ("Modulaciones por mod wheel/aftertouch/pitch bend/slide no se reproducen (se graba su valor en reposo).");
-    if (macroSrc) w.add ("Las macros quedan fijadas en su valor actual.");
-    if (randomSrc) w.add ("La fuente 'Random' por nota se graba con un único valor por muestra.");
-    if (v (P::arpOn) > 0.5f) w.add ("El arpegiador se graba dentro de las muestras (no seguirá el tempo del host).");
-    if (v (P::tgOn) > 0.5f) w.add ("El trance gate se graba dentro de las muestras (no seguirá el tempo del host).");
-    if ((int) v (P::playMode) != pmPoly || v (P::glide) > 0.0005f) w.add ("Mono/legato y glide no tienen equivalente en este SFZ.");
-    if (v (P::chordMode) > 0.5f) w.add ("El modo acorde se graba en cada muestra.");
+    if (realtimeSrc) w.add (L ("Modulaciones por mod wheel/aftertouch/pitch bend/slide no se reproducen (se graba su valor en reposo).", "Mod wheel/aftertouch/pitch bend/slide modulation is not reproduced (its resting value is recorded)."));
+    if (macroSrc) w.add (L ("Las macros quedan fijadas en su valor actual.", "Macros are frozen at their current value."));
+    if (randomSrc) w.add (L ("La fuente 'Random' por nota se graba con un único valor por muestra.", "The per-note 'Random' source is recorded with a single value per sample."));
+    if (v (P::arpOn) > 0.5f) w.add (L ("El arpegiador se graba dentro de las muestras (no seguirá el tempo del host).", "The arpeggiator is baked into the samples (it does not follow host tempo)."));
+    if (v (P::tgOn) > 0.5f) w.add (L ("El trance gate se graba dentro de las muestras (no seguirá el tempo del host).", "The trance gate is baked into the samples (it does not follow host tempo)."));
+    if ((int) v (P::playMode) != pmPoly || v (P::glide) > 0.0005f) w.add (L ("Mono/legato y glide no tienen equivalente en este SFZ.", "Mono/legato and glide have no equivalent in this SFZ."));
+    if (v (P::chordMode) > 0.5f) w.add (L ("El modo acorde se graba en cada muestra.", "Chord mode is baked into every sample."));
     for (int l = 0; l < kNumLfo; ++l)
-        if (v (P::lfo (l, P::lRetrig)) < 0.5f) { w.add ("Los LFO libres (sin retrigger) quedan congelados en la fase de grabación."); break; }
-    if (v (P::mpeOn) > 0.5f) w.add ("MPE no está soportado en SFZ.");
+        if (v (P::lfo (l, P::lRetrig)) < 0.5f) { w.add (L ("Los LFO libres (sin retrigger) quedan congelados en la fase de grabación.", "Free-running LFOs (no retrigger) are frozen at the recording phase.")); break; }
+    if (v (P::mpeOn) > 0.5f) w.add (L ("MPE no está soportado en SFZ.", "MPE is not supported in SFZ."));
     return w;
 }
 
