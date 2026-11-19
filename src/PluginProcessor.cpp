@@ -6,7 +6,12 @@ GenesixProcessor::GenesixProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "GENESIX", gx::createLayout())
 {
-    for (auto& d : gx::paramDefs()) raw.push_back (apvts.getRawParameterValue (d.id));
+    for (auto& d : gx::paramDefs())
+    {
+        raw.push_back (apvts.getRawParameterValue (d.id));
+        paramPtrs.push_back (apvts.getParameter (d.id));
+    }
+    clearMidiLearn();
     snapshot.assign (raw.size(), 0.0f);
     for (auto& t : userTables) t.store (nullptr);
     sharedPatterns.write (patterns);
@@ -29,6 +34,20 @@ void GenesixProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 {
     juce::ScopedNoDenormals nd;
     keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
+    for (const auto meta : midi)
+    {
+        const auto m = meta.getMessage();
+        if (! m.isController()) continue;
+        const int cc = m.getControllerNumber();
+        if (cc == 1 || cc == 64 || cc == 74 || cc >= 120) continue; // reserved controllers
+        if (const int lp = learnParam.exchange (-1); lp >= 0)
+        {
+            for (auto& c : ccMap) if (c.load() == lp) c.store (-1);
+            ccMap[(size_t) cc].store (lp);
+        }
+        if (const int pi = ccMap[(size_t) cc].load(); pi >= 0)
+            paramPtrs[(size_t) pi]->setValueNotifyingHost ((float) m.getControllerValue() / 127.0f);
+    }
     for (size_t i = 0; i < raw.size(); ++i) snapshot[i] = raw[i]->load (std::memory_order_relaxed);
     sharedPatterns.read (audioPatterns);
 
@@ -108,15 +127,26 @@ juce::AudioProcessorEditor* GenesixProcessor::createEditor() { return new Genesi
 
 void GenesixProcessor::getStateInformation (juce::MemoryBlock& mb)
 {
-    const auto json = gx::Preset::capture (*this).toJson();
+    auto v = gx::Preset::capture (*this).toVar();
+    juce::Array<juce::var> map;
+    for (int cc = 0; cc < 128; ++cc)
+        if (const int pi = ccMap[(size_t) cc].load(); pi >= 0) map.add (juce::Array<juce::var> { cc, gx::paramDefs()[(size_t) pi].id });
+    v.getDynamicObject()->setProperty ("midiLearn", map);
+    const auto json = juce::JSON::toString (v, true);
     mb.replaceAll (json.toRawUTF8(), json.getNumBytesAsUTF8());
 }
 
 void GenesixProcessor::setStateInformation (const void* data, int size)
 {
     gx::Preset p;
-    if (gx::Preset::fromJson (juce::String::fromUTF8 (static_cast<const char*> (data), size), p))
+    const auto text = juce::String::fromUTF8 (static_cast<const char*> (data), size);
+    if (gx::Preset::fromJson (text, p))
     {
+        clearMidiLearn();
+        if (auto* map = juce::JSON::parse (text).getProperty ("midiLearn", {}).getArray())
+            for (auto& e : *map)
+                if (auto* pair = e.getArray(); pair != nullptr && pair->size() == 2)
+                    if (const int pi = gx::paramIndex ((*pair)[1].toString()); pi >= 0) ccMap[(size_t) juce::jlimit (0, 127, (int) (*pair)[0])].store (pi);
         p.applyTo (*this);
         presetGeneration.fetch_add (1);
     }

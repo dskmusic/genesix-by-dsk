@@ -56,6 +56,10 @@ public:
     // Scope / meter feed (lock-free SPSC)
     int readScope (float* dest, int maxSamples);
     std::atomic<float> peakL { 0 }, peakR { 0 }, rms { 0 };
+    // MIDI learn: CC -> parameter index
+    std::atomic<int> learnParam { -1 };
+    std::array<std::atomic<int>, 128> ccMap;
+    void clearMidiLearn() { for (auto& c : ccMap) c.store (-1); }
     // UI-injected MIDI (on-screen keyboard)
     juce::MidiKeyboardState keyboardState;
 
@@ -64,6 +68,7 @@ private:
 
     gx::Engine engine;
     std::vector<std::atomic<float>*> raw;
+    std::vector<juce::RangedAudioParameter*> paramPtrs;
     std::vector<float> snapshot;
     gx::Patterns patterns, audioPatterns;
     gx::SharedPatterns sharedPatterns;
