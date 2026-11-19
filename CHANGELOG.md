@@ -3,6 +3,8 @@
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-11-19
 ### Added
 - Generator v2 (sound design): every request now builds several valid candidates and keeps the most interesting one (category-aware score for movement, evolution, stereo width and richness; chaos and noise are penalised).
 - Layering with roles (air layer an octave up, clean sub weight, spectral-mutation motion layer), Genesix signature features where they shine (Shimmer, Granular Smear, formant and comb colour), stereo tremolo/phaser on keys, slow "bloom" envelope and drift LFO on big sustained sounds.
