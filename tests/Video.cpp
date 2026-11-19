@@ -449,9 +449,9 @@ int runVideo (int argc, char** argv)
     // ---- presets
     d.caption ("220 factory presets", "Categories, tags, instant search, favourites, ratings");
     d.click (d.button ("PRESETS"), 0.4);
-    d.type (d.find<juce::TextEditor> (d.ed.get()), "arp");
+    d.type (d.find<juce::TextEditor> (d.ed.get()), "trance");
     d.wait (0.3);
-    d.selectRow (d.find<juce::ListBox> (d.ed.get(), [] (juce::ListBox* l) { return l->getName() == "presets"; }), 0);
+    d.selectRow (d.find<juce::ListBox> (d.ed.get(), [] (juce::ListBox* l) { return l->getName() == "presets"; }), juce::jmax (0, d.find<PresetsPage> (d.ed.get())->rowOfPreset ("Hypno Clock")));
     d.play (heldChords (6));
     d.wait (2.8);
 

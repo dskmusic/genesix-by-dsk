@@ -374,3 +374,13 @@ void PresetsPage::resized()
     info.setBounds (right.reduced (2));
 }
 }
+
+namespace gx::ui
+{
+int PresetsPage::rowOfPreset (const juce::String& name) const
+{
+    for (size_t i = 0; i < shown.size(); ++i)
+        if (ctx.library.all()[(size_t) shown[i]].name == name) return (int) i;
+    return -1;
+}
+}

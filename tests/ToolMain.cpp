@@ -139,6 +139,24 @@ int main (int argc, char** argv)
         }
         return 0;
     }
+    if (cmd == "preset-metrics")
+    {
+        // GenesixTool preset-metrics "Name 1" "Name 2" ...  -> generator validation metrics of factory presets
+        juce::var bank;
+        juce::JSON::parse (juce::File::getCurrentWorkingDirectory().getChildFile ("resources/factory.genesixbank").loadFileAsString(), bank);
+        auto* arr = bank.isArray() ? bank.getArray() : bank.getProperty ("presets", {}).getArray();
+        if (arr == nullptr) { std::printf ("bank not found (run from the repo root)\n"); return 1; }
+        for (int a = 2; a < argc; ++a)
+            for (auto& v : *arr)
+            {
+                auto p = gx::Preset::fromVar (v);
+                if (p.meta.name != juce::String (argv[a])) continue;
+                const auto r = gx::Generator::validate (p, false);
+                std::printf ("%-18s rms %6.1f  peak %6.1f  centroid %6.0f Hz  flatness %.3f  sustain %.2f  %s\n", argv[a], r.rmsDb, r.peakDb,
+                             r.centroidHz, r.flatness, r.sustainRatio, r.ok ? "ok" : r.reason.toRawUTF8());
+            }
+        return 0;
+    }
     if (cmd == "icon")
     {
         // GenesixTool icon <dir>  ->  genesix-icon.png (1024 px, used by CMake ICON_BIG) + genesix.ico (installer)

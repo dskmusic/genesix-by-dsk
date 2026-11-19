@@ -88,6 +88,7 @@ public:
     void pageShown() override { refresh(); }
     bool keyPressed (const juce::KeyPress&) override;
     void step (int delta);                         // header < > buttons
+    int rowOfPreset (const juce::String& name) const;  // row in the current filtered list, -1 if hidden
     std::function<void (const Preset&)> onLoaded;
 private:
     int getNumRows() override { return (int) shown.size(); }
