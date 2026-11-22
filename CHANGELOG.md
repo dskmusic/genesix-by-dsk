@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-22
+### Added
+- Standalone: maximise (green "+") button in the title bar, next to minimise and close.
+
 ## [1.2.0] - 2026-11-19
 ### Added
 - Generator v2 (sound design): every request now builds several valid candidates and keeps the most interesting one (category-aware score for movement, evolution, stereo width and richness; chaos and noise are penalised).

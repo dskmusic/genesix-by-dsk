@@ -218,3 +218,11 @@ bool GenesixEditor::keyPressed (const juce::KeyPress& k)
     if (currentPage == 0 && generator->handleKey (k)) return true;
     return false;
 }
+
+// Standalone only: add the maximise ("green +") button next to minimise/close.
+void GenesixEditor::parentHierarchyChanged()
+{
+    if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+        if (auto* w = findParentComponentOfClass<juce::DocumentWindow>())
+            w->setTitleBarButtonsRequired (juce::DocumentWindow::allButtons, false);
+}
