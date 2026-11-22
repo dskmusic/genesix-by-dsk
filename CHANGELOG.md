@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-11-22
+### Fixed
+- Standalone: the maximise button no longer shrinks the window on startup; a maximised window now fits the screen, the interface fills it completely (no side borders) and the piano keyboard spans the full width.
+
 ## [1.2.1] - 2026-11-22
 ### Added
 - Standalone: maximise (green "+") button in the title bar, next to minimise and close.

@@ -48,8 +48,14 @@ GenesixEditor::GenesixEditor (GenesixProcessor& p)
     toastLabel.setFont (gx::ui::font (13.0f, true));
 
     tooltips = std::make_unique<juce::TooltipWindow> (&root, 600);
-    constrainer.setFixedAspectRatio ((double) kDesignW / kDesignH);
-    constrainer.setSizeLimits (kDesignW / 2, kDesignH / 2, kDesignW * 2, kDesignH * 2);
+    // Standalone: free aspect so a maximised window fits the screen's work area (the UI letterboxes itself); plugin keeps 16:10
+    if (proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+        constrainer.setSizeLimits (kDesignW / 2, kDesignH / 2, 8192, 8192);
+    else
+    {
+        constrainer.setFixedAspectRatio ((double) kDesignW / kDesignH);
+        constrainer.setSizeLimits (kDesignW / 2, kDesignH / 2, kDesignW * 2, kDesignH * 2);
+    }
     setConstrainer (&constrainer);
     setResizable (true, true);
     const float s = juce::jlimit (0.5f, 2.0f, settings.scale());
@@ -122,15 +128,17 @@ void GenesixEditor::paint (juce::Graphics& g) { g.fillAll (gx::ui::col::bg); }
 
 void GenesixEditor::resized()
 {
-    const float s = (float) getWidth() / (float) kDesignW;
-    root.setBounds (0, 0, kDesignW, kDesignH);
+    // uniform scale by the tighter side; the other axis gets extra logical space so the layout fills the window
+    const float s = juce::jmin ((float) getWidth() / (float) kDesignW, (float) getHeight() / (float) kDesignH);
+    root.setBounds (0, 0, juce::roundToInt (getWidth() / s), juce::roundToInt (getHeight() / s));
     root.setTransform (juce::AffineTransform::scale (s));
     auto r = root.getLocalBounds();
     header->setBounds (r.removeFromTop (64));
     keyboard.setBounds (r.removeFromBottom (52).reduced (4, 2));
+    keyboard.setKeyWidth (juce::jmax (18.0f, keyboard.getWidth() / 75.0f));   // 75 white keys in 0..127: wide windows show the whole keyboard, no gap
     for (auto* pg : pages) pg->setBounds (r);
     about->setBounds (root.getLocalBounds());
-    toastLabel.setBounds (root.getLocalBounds().withSizeKeepingCentre (560, 34).withY (kDesignH - 110));
+    toastLabel.setBounds (root.getLocalBounds().withSizeKeepingCentre (560, 34).withY (root.getHeight() - 110));
 }
 
 void GenesixEditor::setUiScale (float s)
@@ -220,9 +228,18 @@ bool GenesixEditor::keyPressed (const juce::KeyPress& k)
 }
 
 // Standalone only: add the maximise ("green +") button next to minimise/close.
+// Deferred until the window has its final size; changing the buttons earlier left it at its minimum size.
 void GenesixEditor::parentHierarchyChanged()
 {
-    if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
-        if (auto* w = findParentComponentOfClass<juce::DocumentWindow>())
+    if (processor.wrapperType != juce::AudioProcessor::wrapperType_Standalone) return;
+    juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<GenesixEditor> (this)]
+    {
+        if (safe == nullptr) return;
+        if (auto* w = safe->findParentComponentOfClass<juce::DocumentWindow>())
+        {
+            const auto b = w->getBounds();
             w->setTitleBarButtonsRequired (juce::DocumentWindow::allButtons, false);
+            w->setBounds (b);
+        }
+    });
 }
